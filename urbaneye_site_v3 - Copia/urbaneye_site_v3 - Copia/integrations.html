@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+  <title>UrbanEye</title>
+  <script>
+    // Inicializa tema escuro imediatamente para evitar flash branco
+    const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+</head>
+
+<body>
+
+  <!-- Header Desktop Top Nav -->
+  <header class="desktop-header">
+    <div class="desktop-header-inner">
+      <div class="logo-container" onclick="show('home')" style="cursor:pointer">
+        <img src="logo.png" class="app-logo" alt="Logo">
+        <div class="logo">Urban<span>Eye</span></div>
+      </div>
+      <div class="desktop-links">
+        <button onclick="show('home')">Início</button>
+        <button onclick="show('map')">Mapa</button>
+        <button onclick="show('integrations')">Parcerias</button>
+        <button onclick="show('ranking')">Comunidade</button>
+        <button onclick="show('profile')">Perfil</button>
+        <button class="btn-report" onclick="requireLogin()">Reportar</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+
+    <section class="screen active" style="padding-bottom: 20px;">
+
+      <div class="top"><button class="iconbtn" onclick="show('profile')">‹</button><b>Integrações</b>
+        <div></div>
+      </div>
+      <div class="card form-card">
+        <div style="text-align:center;margin-bottom:10px"><img src="logo.png"
+            style="width:70px;border-radius:15px" alt="UrbanEye"></div>
+        <h2 style="margin:0 0 8px 0; text-align:center">Mobilidade Integrada</h2>
+        <p class="muted small" style="margin-bottom:16px; text-align:center">Abra serviços parceiros para continuar sua
+          rota em outros aplicativos. O UrbanEye não acessa sua conta nem sincroniza dados privados desses serviços.</p>
+        <div class="card" style="margin:0 0 14px;padding:13px">
+          <b>Compartilhar localização</b>
+          <p id="integrationLocation" class="small muted">Use sua localização atual para montar links de navegação.</p>
+          <button class="btn secondary" onclick="useMyLocationForApps()">Usar minha localização</button>
+        </div>
+        <div class="listitem">
+          <div class="avatar" style="background:#ff6b00;color:#fff">M</div>
+          <div style="flex:1"><b>Moovit</b>
+            <div class="small muted">Consultar transporte público e trajetos</div>
+          </div><button class="btn secondary partner-btn" onclick="openPartner('moovit')">Abrir</button>
+        </div>
+        <div class="listitem">
+          <div class="avatar" style="background:#33ccff;color:#fff">W</div>
+          <div style="flex:1"><b>Waze</b>
+            <div class="small muted">Abrir navegação até a localização</div>
+          </div><button class="btn secondary partner-btn" onclick="openPartner('waze')">Abrir</button>
+        </div>
+        <div class="listitem">
+          <div class="avatar" style="background:#4285f4;color:#fff">G</div>
+          <div style="flex:1"><b>Google Maps</b>
+            <div class="small muted">Consultar mapa e rotas</div>
+          </div><button class="btn secondary partner-btn" onclick="openPartner('maps')">Abrir</button>
+        </div>
+        <div class="listitem">
+          <div class="avatar" style="background:#000;color:#fff">U</div>
+          <div style="flex:1"><b>Uber</b>
+            <div class="small muted">Abrir serviço de transporte</div>
+          </div><button class="btn secondary partner-btn" onclick="openPartner('uber')">Abrir</button>
+        </div>
+        <button class="btn" style="margin-top:18px" onclick="shareUrbanEye()">Compartilhar UrbanEye</button>
+        <p class="small muted" style="margin:12px 0 0">Integração por links externos. Integrações oficiais via API/OAuth
+          exigem cadastro, credenciais e autorização de cada parceiro.</p>
+      </div>
+
+    </section>
+
+
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+  <title>UrbanEye</title>
+  <script>
+    // Inicializa tema escuro imediatamente para evitar flash branco
+    const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+</head>
+
+<body>
+
+  <!-- Header Desktop Top Nav -->
+  <header class="desktop-header">
+    <div class="desktop-header-inner">
+      <div class="logo-container" onclick="show('home')" style="cursor:pointer">
+        <img src="logo.png" class="app-logo" alt="Logo">
+        <div class="logo">Urban<span>Eye</span></div>
+      </div>
+      <div class="desktop-links">
+        <button onclick="show('home')">Início</button>
+        <button onclick="show('map')">Mapa</button>
+        <button onclick="show('ranking')">Comunidade</button>
+        <button onclick="show('profile')">Perfil</button>
+        
+        <button class="btn-report" onclick="requireLogin()">＋ Reportar</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+
+    <section class="screen active" style="padding-bottom: 20px;">
+
+      <div class="top"><button class="iconbtn" onclick="show('profile')">‹</button><b>Ajuda e segurança</b>
+        <div></div>
+      </div>
+      <div class="content-grid">
+        <div class="card">
+          <h2 style="margin:0">Como usar o UrbanEye?</h2>
+          <div class="listitem"><b style="font-size:18px;color:var(--primary)">1</b>
+            <div><b>Explore o mapa</b>
+              <div class="small muted">Veja problemas públicos por localização e categoria via API.</div>
+            </div>
+          </div>
+          <div class="listitem"><b style="font-size:18px;color:var(--primary)">2</b>
+            <div><b>Reporte um problema</b>
+              <div class="small muted">Informe categoria, local, descrição e, se possível, uma foto.</div>
+            </div>
+          </div>
+          <div class="listitem"><b style="font-size:18px;color:var(--primary)">3</b>
+            <div><b>Acompanhe o status</b>
+              <div class="small muted">Veja se o relato está aberto, em análise ou resolvido.</div>
+            </div>
+          </div>
+          <div class="listitem"><b style="font-size:18px;color:var(--primary)">4</b>
+            <div><b>Confirme problemas</b>
+              <div class="small muted">Confirmações ajudam a mostrar quais ocorrências afetam mais moradores.</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card"><b>Privacidade</b>
+            <p class="small muted" style="margin-top:8px">Não publique telefone, documentos ou outras informações
+              pessoais na descrição. Os dados são sincronizados através da API Mockada.</p>
+          </div>
+          <div class="card"><button class="btn secondary"
+              onclick="toast('Obrigado por ajudar a comunidade!')">Entendi</button></div>
+        </div>
+      </div>
+
+    </section>
+
+
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>

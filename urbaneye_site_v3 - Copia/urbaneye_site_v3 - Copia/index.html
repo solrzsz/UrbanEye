@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+  <title>UrbanEye</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Inicializa tema escuro imediatamente para evitar flash branco
+    const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+</head>
+<!-- GAYBRIEL ESTEVE AQUI DANDO O CU -->
+<body>
+
+  <!-- Header Desktop Top Nav -->
+  <header class="desktop-header">
+    <div class="desktop-header-inner">
+      <div class="logo-container" onclick="show('home')" style="cursor:pointer">
+        <img src="logo.png" class="app-logo" alt="Logo">
+        <div class="logo">Urban<span>Eye</span></div>
+      </div>
+      <div class="desktop-links">
+        <button onclick="show('home')">Início</button>
+        <button onclick="show('map')">Mapa</button>
+        <button onclick="show('integrations')">Parcerias</button>
+        <button onclick="show('ranking')">Comunidade</button>
+        <button onclick="show('profile')">Perfil</button>
+        
+        <button class="btn-report" onclick="requireLogin()">Reportar</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+
+    <section class="screen active" style="padding-bottom: 78px;">
+
+      <div class="top">
+        <div class="logo-container"><img src="logo.png" class="app-logo" alt="Logo">
+          <div class="logo">Urban<span>Eye</span></div>
+        </div><button class="iconbtn" onclick="show('notifications')">Notificações</button>
+      </div>
+      <div class="hero">
+        <div>
+          <div class="small">MAPEAMENTO URBANO</div>
+          <h1 style="margin:5px 0;font-size:28px">Veja. Reporte.<br>Transforme.</h1>
+        </div><button class="btn" onclick="show('map')">Explorar mapa →</button>
+      </div>
+      <h2>Escolha sua cidade</h2>
+      <div class="city-grid">
+        <div class="card" onclick="show('map')" style="cursor:pointer">
+          <div class="city">
+            <div class="cityname">Brasil • Rio de Janeiro </div>
+          </div>
+          <div class="between"><b>Rio de Janeiro</b><span class="small muted">● <span id="homeCount">...</span>
+              problemas</span></div>
+        </div>
+        <div class="card">
+          <div class="city" style="background:linear-gradient(135deg,#5b8b67,#203f2b)">
+            <div class="cityname">Outras localidades • Em breve</div>
+          </div>
+          <div class="between"><b></b><span class="small muted">Em breve</span></div>
+        </div>
+      </div>
+
+      <section class="partners-section">
+        <div class="section-head">
+          <div>
+            <div class="small">PARCERIAS</div>
+            <h2>Serviços que ampliam a mobilidade urbana</h2>
+          </div>
+          <button class="btn secondary" onclick="show('integrations')">Ver todas →</button>
+        </div>
+
+        <div class="partners-grid">
+          <article class="partner-card moovit">
+            <div class="partner-logo">M</div>
+            <div>
+              <b>Moovit</b>
+              <p>Rotas e horários de transporte público em tempo real.</p>
+            </div>
+          </article>
+
+          <article class="partner-card waze">
+            <div class="partner-logo">W</div>
+            <div>
+              <b>Waze</b>
+              <p>Orientação por voz e alertas de trânsito para o destino.</p>
+            </div>
+          </article>
+
+          <article class="partner-card uber">
+            <div class="partner-logo">U</div>
+            <div>
+              <b>Uber</b>
+              <p>Conexão rápida para completar a sua viagem em segurança.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+    </section>
+
+
+    <div class="nav" id="nav">
+      <button onclick="show('home')">Início</button>
+      <button onclick="show('map')">Mapa</button>
+      <button onclick="show('integrations')">Parcerias</button>
+      <button class="plus" onclick="requireLogin()">+</button>
+      <button onclick="show('ranking')">Comunidade</button>
+      <button onclick="show('profile')">Perfil</button>
+    </div>
+
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
