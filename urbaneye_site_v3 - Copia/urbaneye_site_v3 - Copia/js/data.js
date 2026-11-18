@@ -6,8 +6,15 @@ const defaultProblems = [
     { id: 5, lat: -22.7898, lng: -43.3140, cat: 'Buraco na rua', status: 'Aberto', bairro: 'Jardim Primavera', desc: 'Buraco próximo à calçada.', color: '#e53935' }
 ];
 
+const GUEST_REPORTS_KEY = 'urbaneye_guest_reports';
+const MAX_GUEST_REPORTS = 25;
+
 function useSupabaseData() {
     return !!(window.supabaseClient && window.supabaseClient.auth && window.supabaseClient.storage && window.urbaneyeSupabaseEnabled);
+}
+
+function isAuthenticatedNow() {
+    return !!(window.UrbanAuth && window.UrbanAuth.isAuthenticated && window.UrbanAuth.isAuthenticated());
 }
 
 function normalizeProblemRow(row) {
@@ -39,6 +46,38 @@ function normalizeProblemPayload(problem) {
     };
 }
 
+function readGuestReports() {
+    try {
+        const raw = localStorage.getItem(GUEST_REPORTS_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function writeGuestReports(list) {
+    try {
+        localStorage.setItem(GUEST_REPORTS_KEY, JSON.stringify(list));
+        return true;
+    } catch (error) {
+        console.warn('Não foi possível salvar os relatos locais:', error);
+        return false;
+    }
+}
+
+function saveGuestReport(report) {
+    const list = readGuestReports();
+    list.unshift(report);
+    if (list.length > MAX_GUEST_REPORTS) list.length = MAX_GUEST_REPORTS;
+
+    if (writeGuestReports(list)) return true;
+
+    // Se a cota do localStorage estourar (fotos em base64), tenta salvar sem as fotos.
+    const withoutPhotos = list.map((item) => item.photo ? { ...item, photo: null } : item);
+    return writeGuestReports(withoutPhotos);
+}
+
 async function uploadProblemPhotoIfNeeded(dataUrl) {
     if (!dataUrl || !window.supabaseClient || !String(dataUrl).startsWith('data:image/')) return dataUrl;
 
@@ -66,29 +105,39 @@ async function uploadProblemPhotoIfNeeded(dataUrl) {
     }
 }
 
+async function fetchRemoteProblems() {
+    if (!useSupabaseData()) return [];
+
+    const { data, error } = await window.supabaseClient
+        .from('reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Erro ao buscar relatos do Supabase:', error);
+        return [];
+    }
+
+    return (data || []).map(normalizeProblemRow);
+}
+
 window.UrbanAPI = {
     async getProblems() {
-        if (!useSupabaseData()) {
-            console.warn('Supabase não configurado. Nenhum dado será carregado em modo local.');
-            return [];
-        }
+        const remote = await fetchRemoteProblems();
 
-        const { data, error } = await window.supabaseClient
-            .from('reports')
-            .select('*')
-            .order('created_at', { ascending: false });
+        if (isAuthenticatedNow()) return remote;
 
-        if (error) {
-            console.error('Erro ao buscar relatos do Supabase:', error);
-            return [];
-        }
-
-        return (data || []).map(normalizeProblemRow);
+        // Visitante: vê os relatos públicos + os relatos que salvou localmente.
+        return [...readGuestReports(), ...remote];
     },
 
     async getProblemById(id) {
+        if (!isAuthenticatedNow()) {
+            const local = readGuestReports().find((report) => String(report.id) === String(id));
+            if (local) return local;
+        }
+
         if (!useSupabaseData()) {
-            console.warn('Supabase não configurado. Nenhum relato será carregado em modo local.');
             return null;
         }
 
@@ -106,7 +155,124 @@ window.UrbanAPI = {
         return data ? normalizeProblemRow(data) : null;
     },
 
+    async getMyReports() {
+        if (!isAuthenticatedNow()) {
+            return readGuestReports();
+        }
+
+        if (!useSupabaseData()) return [];
+
+        try {
+            const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
+            if (userError || !userData?.user) return [];
+
+            const { data, error } = await window.supabaseClient
+                .from('reports')
+                .select('*')
+                .eq('user_id', userData.user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Erro ao buscar seus relatos:', error);
+                return [];
+            }
+
+            return (data || []).map(normalizeProblemRow);
+        } catch (error) {
+            console.error('Erro ao buscar seus relatos:', error);
+            return [];
+        }
+    },
+
+    async getProfileData() {
+        const reports = await this.getMyReports();
+        const resolved = reports.filter((report) => report.status === 'Resolvido').length;
+
+        if (!isAuthenticatedNow()) {
+            return {
+                name: 'Visitante',
+                email: null,
+                memberSince: 'Modo visitante — dados salvos neste navegador',
+                reports: reports.length,
+                resolved,
+                confirmations: 0,
+                points: reports.length * 10,
+                isGuest: true
+            };
+        }
+
+        let user = null;
+        try {
+            const { data } = await window.supabaseClient.auth.getUser();
+            user = data?.user || null;
+        } catch (error) {
+            console.warn('Não foi possível carregar o usuário:', error);
+        }
+
+        let fullName = user?.user_metadata?.full_name || '';
+        if (!fullName && user?.id && useSupabaseData()) {
+            try {
+                const { data: profile } = await window.supabaseClient
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', user.id)
+                    .maybeSingle();
+                fullName = profile?.full_name || '';
+            } catch (error) {
+                console.warn('Não foi possível carregar o perfil:', error);
+            }
+        }
+
+        const email = user?.email || null;
+        const memberSince = user?.created_at
+            ? 'Conta criada em ' + new Date(user.created_at).toLocaleDateString('pt-BR')
+            : 'Conta conectada';
+
+        return {
+            name: fullName || (email ? email.split('@')[0] : 'Usuário'),
+            email,
+            memberSince,
+            reports: reports.length,
+            resolved,
+            confirmations: 0,
+            points: reports.length * 10,
+            isGuest: false
+        };
+    },
+
+    async getNotifications() {
+        // Notificações ainda são demonstrativas para todos os perfis.
+        return [
+            { title: 'Problema atualizado', text: 'Seu relato de iluminação foi marcado como resolvido.', read: false },
+            { title: 'Novo problema perto de você', text: 'Um novo buraco foi reportado no Centro.', read: false },
+            { title: 'Você ganhou pontos!', text: 'Sua participação ajudou a comunidade.', read: false }
+        ];
+    },
+
     async addProblem(problem) {
+        if (!isAuthenticatedNow()) {
+            const report = normalizeProblemRow({
+                id: 'guest-' + Date.now(),
+                category: problem.cat,
+                description: problem.desc,
+                status: problem.status || 'Aberto',
+                lat: problem.lat,
+                lng: problem.lng,
+                color: problem.color || '#1769e0',
+                bairro: problem.bairro || null,
+                photo_url: problem.photo || null,
+                created_at: new Date().toISOString(),
+                is_guest: true
+            });
+
+            const saved = saveGuestReport(report);
+            if (!saved) {
+                throw new Error('Não foi possível salvar o relato neste navegador. O armazenamento local pode estar cheio.');
+            }
+
+            return report;
+        }
+
         if (!useSupabaseData()) {
             throw new Error('Supabase não configurado. Configure a URL e a chave do projeto para salvar a denúncia.');
         }
@@ -141,7 +307,10 @@ window.UrbanAPI = {
             analysis: data.filter(p => p.status === 'Em análise').length,
             open: data.filter(p => p.status === 'Aberto').length
         };
-    }
+    },
+
+    isGuest: () => !isAuthenticatedNow(),
+    getGuestReports: readGuestReports
 };
 
 const UrbanAPI = window.UrbanAPI;

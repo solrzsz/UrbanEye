@@ -10,7 +10,19 @@
   // Inicializa tema escuro imediatamente para evitar flash branco
   const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
+  document.documentElement.classList.add('auth-checking');
+  setTimeout(() => document.documentElement.classList.remove('auth-checking'), 5000);
 </script>
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/auth-guard.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="js/data.js"></script>
+  <script defer src="js/app.js"></script>
 </head>
 <body>
 
@@ -47,7 +59,16 @@
   <div class="listitem" onclick="exportData()" style="cursor:pointer"><div></div><div><b>Exportar meus dados (API)</b><div class="small muted">Baixar uma cópia dos seus relatos</div></div></div>
   <div class="listitem" onclick="clearLocalData()" style="cursor:pointer"><div></div><div><b>Limpar cache da API</b><div class="small muted">Apaga os dados salvos localmente</div></div></div></div>
    
-  <div class="card"><button class="btn danger" data-logout-button onclick="logout()">Sair da conta</button></div>
+  <div class="card" data-auth-only>
+    <div><b>Conta:</b> <span class="small muted" data-account-email></span></div>
+    <button class="btn danger" data-logout-button onclick="logout()" style="margin-top:14px">Sair da conta</button>
+  </div>
+  <div class="card" data-guest-only>
+    <b>Modo visitante</b>
+    <p class="small muted" style="margin:6px 0 12px">Suas preferências e relatos ficam salvos apenas neste navegador. Entre para sincronizar tudo na sua conta.</p>
+    <button class="btn" onclick="openLogin('settings.html')" style="margin-bottom:10px">Entrar na conta</button>
+    <button class="btn secondary" onclick="exitGuestMode()">Sair do modo visitante</button>
+  </div>
 </div>
 
 </section>
@@ -57,14 +78,6 @@
 <div id="toast" class="toast"></div>
 </div>
 
-<script>
-  window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
-  window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="js/data.js"></script>
-<script src="js/app.js"></script>
+
 </body>
 </html>

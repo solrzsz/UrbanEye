@@ -11,7 +11,19 @@
     // Inicializa tema escuro imediatamente para evitar flash branco
     const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.classList.add('auth-checking');
+    setTimeout(() => document.documentElement.classList.remove('auth-checking'), 5000);
   </script>
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/auth-guard.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="js/data.js"></script>
+  <script defer src="js/app.js"></script>
 </head>
 
 <body>
@@ -41,6 +53,11 @@
       <div class="top"><button class="iconbtn" onclick="show('home')">‹</button><b>Notificações</b><button
           class="iconbtn" onclick="toast('Tudo marcado como lido')">Marcar como lidas</button></div>
       <div class="card form-card">
+        <div class="auth-notice" data-guest-only>
+          <b>Modo visitante</b>
+          <span>As notificações abaixo são exemplos. Entre na conta para receber alertas reais da sua região.</span>
+          <button type="button" class="btn secondary" style="margin-top:10px;width:auto" onclick="openLogin('notifications.html')">Entrar na conta</button>
+        </div>
         <div class="listitem">
           <div><b>Problema atualizado</b>
             <p class="small muted">Seu relato de iluminação foi marcado como resolvido via API do prefeitura.</p>
@@ -74,15 +91,7 @@
     <div id="toast" class="toast"></div>
   </div>
 
-  <script>
-    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
-    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/app.js"></script>
+
 </body>
 
 </html>

@@ -11,7 +11,19 @@
     // Inicializa tema escuro imediatamente para evitar flash branco
     const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.classList.add('auth-checking');
+    setTimeout(() => document.documentElement.classList.remove('auth-checking'), 5000);
   </script>
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/auth-guard.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="js/data.js"></script>
+  <script defer src="js/app.js"></script>
 </head>
 
 <body>
@@ -41,6 +53,11 @@
       <div class="top"><button class="iconbtn" onclick="show('map')">‹</button><b>Novo relato</b><button class="iconbtn"
           onclick="show('map')">×</button></div>
       <div class="card form-card">
+        <div class="auth-notice" data-guest-only>
+          <b>Modo visitante</b>
+          <span>Este relato será salvo apenas neste navegador e não será enviado ao servidor. Entre na conta para publicar para toda a comunidade.</span>
+          <button type="button" class="btn secondary" style="margin-top:10px;width:auto" onclick="openLogin('report.html')">Entrar na conta</button>
+        </div>
         <h2 style="margin:0 0 14px">O que aconteceu?</h2>
         <div class="field"><label>Categoria</label><select id="reportCategory">
             <option>Buraco na rua</option>
@@ -94,15 +111,7 @@
     <div id="toast" class="toast"></div>
   </div>
 
-  <script>
-    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
-    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/app.js"></script>
+
 </body>
 
 </html>

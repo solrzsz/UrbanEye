@@ -1,15 +1,5 @@
 let map, userMarker, reportMap, reportMarker;
 
-function persistAuthState(email, loggedIn) {
-  if (loggedIn) {
-    localStorage.setItem('urbaneye_logged_in', 'true');
-    if (email) localStorage.setItem('urbaneye_user', JSON.stringify({ email }));
-  } else {
-    localStorage.removeItem('urbaneye_logged_in');
-    localStorage.removeItem('urbaneye_user');
-  }
-}
-
 // Theme Logic
 function setTheme(theme) {
   const selected = theme === 'dark' ? 'dark' : 'light';
@@ -80,10 +70,36 @@ function getStoredUser() {
   }
 }
 
+function getQueryParam(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name);
+}
+
 function initLoginPage() {
   const emailInput = document.getElementById('email');
   const savedUser = getStoredUser();
   const savedAccountBadge = document.getElementById('savedAccountBadge');
+  const loginNotice = document.getElementById('loginNotice');
+
+  const reason = getQueryParam('reason');
+  const redirect = window.UrbanAuth ? window.UrbanAuth.safeRedirect(getQueryParam('redirect')) : null;
+
+  if (loginNotice) {
+    let message = '';
+    if (reason === 'session-expired') message = 'Sua sessão expirou. Entre novamente para continuar.';
+    else if (reason === 'login-required') message = 'Entre na sua conta ou continue como visitante para acessar o UrbanEye.';
+    else if (reason === 'auth-required') message = 'Entre na sua conta para publicar e acompanhar seus relatos.';
+    else if (reason === 'guest-mode') message = 'Você está no modo visitante. Entre para salvar seus dados na conta.';
+
+    if (redirect && redirect !== 'map.html') {
+      message = (message ? message + ' ' : '') + 'Depois do login você volta para a página que estava acessando.';
+    }
+
+    if (message) {
+      loginNotice.textContent = message;
+      loginNotice.style.display = 'block';
+    }
+  }
 
   if (savedUser && savedUser.email) {
     if (emailInput) emailInput.value = savedUser.email;
@@ -98,9 +114,12 @@ function initLoginPage() {
 
 
 async function login() {
-  const btn = event && event.target;
+  const btn = document.getElementById('btnLogin');
   const originalText = btn ? btn.textContent : 'ENTRAR';
-  if (btn) btn.textContent = 'Autenticando...';
+  if (btn) {
+    btn.textContent = 'Autenticando...';
+    btn.disabled = true;
+  }
 
   try {
     if (!hasSupabaseAuth()) {
@@ -120,12 +139,17 @@ async function login() {
     const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email: userEmail, password });
     if (error) throw error;
 
-    persistAuthState(userEmail, true);
-    if (data?.session) {
-      localStorage.setItem('urbaneye_session', JSON.stringify(data.session));
+    if (window.UrbanAuth && data?.session) {
+      window.UrbanAuth.completeAuthentication(data.session);
+    } else if (window.UrbanAuth) {
+      await window.UrbanAuth.refresh();
     }
-    toast('Login realizado com Supabase!');
-    setTimeout(() => show('map'), 600);
+
+    toast('Login realizado com sucesso!');
+    setTimeout(() => {
+      const target = window.UrbanAuth ? window.UrbanAuth.getPostLoginRedirect() : 'map.html';
+      window.location.href = target;
+    }, 500);
   } catch (error) {
     console.error(error);
     toast(error?.message || 'Não foi possível entrar.');
@@ -133,6 +157,7 @@ async function login() {
     if (btn) {
       setTimeout(() => {
         btn.textContent = originalText;
+        btn.disabled = false;
       }, 700);
     }
   }
@@ -142,6 +167,8 @@ async function signup() {
   const nameInput = document.getElementById('registerName');
   const emailInput = document.getElementById('registerEmail');
   const passwordInput = document.getElementById('registerPassword');
+  const btn = document.getElementById('btnRegister');
+  const originalText = btn ? btn.textContent : 'CRIAR CONTA';
 
   const name = nameInput && nameInput.value ? nameInput.value.trim() : 'Usuário';
   const email = emailInput && emailInput.value ? emailInput.value.trim() : '';
@@ -150,6 +177,11 @@ async function signup() {
   if (!email || !password) {
     toast('Preencha email e senha para criar a conta.');
     return;
+  }
+
+  if (btn) {
+    btn.textContent = 'Criando conta...';
+    btn.disabled = true;
   }
 
   try {
@@ -168,107 +200,58 @@ async function signup() {
     if (error) throw error;
 
     const hasSession = !!data?.session;
-    persistAuthState(email, hasSession);
     if (hasSession) {
-      localStorage.setItem('urbaneye_session', JSON.stringify(data.session));
+      if (window.UrbanAuth) {
+        window.UrbanAuth.completeAuthentication(data.session);
+      }
       toast('Conta criada com sucesso!');
-      setTimeout(() => show('map'), 600);
+      setTimeout(() => {
+        const target = window.UrbanAuth ? window.UrbanAuth.getPostLoginRedirect() : 'map.html';
+        window.location.href = target;
+      }, 500);
     } else {
       toast('Conta criada. Confirme seu e-mail para entrar.');
     }
   } catch (error) {
     console.error(error);
     toast(error?.message || 'Não foi possível criar a conta.');
+  } finally {
+    if (btn) {
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 700);
+    }
   }
 }
-
-function requireLogin() { show('login') }
 
 function hasSupabaseAuth() {
   return !!(window.supabaseClient && window.supabaseClient.auth && window.urbaneyeSupabaseEnabled);
 }
 
-function isLoggedIn() {
-  return localStorage.getItem('urbaneye_logged_in') === 'true';
-}
-
-function updateAuthButtons(isLogged) {
-  document.querySelectorAll('[data-logout-button]').forEach((button) => {
-    const shouldShow = !!isLogged;
-    button.hidden = !shouldShow;
-    button.style.display = shouldShow ? '' : 'none';
-    button.setAttribute('aria-hidden', String(!shouldShow));
-  });
-}
-
-async function syncAuthStatus() {
-  if (!hasSupabaseAuth()) {
-    persistAuthState(null, false);
-    localStorage.removeItem('urbaneye_session');
-    updateAuthButtons(false);
-    return false;
-  }
-
-  try {
-    const { data: { session }, error } = await window.supabaseClient.auth.getSession();
-    const hasValidSession = !!session && !!session.user;
-
-    if (hasValidSession) {
-      const email = session.user.email || getStoredUser()?.email || '';
-      persistAuthState(email, true);
-      localStorage.setItem('urbaneye_session', JSON.stringify(session));
-    } else {
-      persistAuthState(null, false);
-      localStorage.removeItem('urbaneye_session');
-    }
-
-    if (error) {
-      console.warn('Sessão não pôde ser validada:', error.message);
-    }
-
-    updateAuthButtons(hasValidSession);
-    return hasValidSession;
-  } catch (error) {
-    console.warn('Não foi possível validar a sessão atual:', error);
-    persistAuthState(null, false);
-    localStorage.removeItem('urbaneye_session');
-    updateAuthButtons(false);
-    return false;
-  }
-}
-
 async function logout() {
-  try {
-    if (hasSupabaseAuth()) {
-      await window.supabaseClient.auth.signOut();
-    }
-  } catch (error) {
-    console.warn('Logout do Supabase falhou:', error);
+  if (window.UrbanAuth) {
+    await window.UrbanAuth.logout();
   }
-
-  persistAuthState(null, false);
-  localStorage.removeItem('urbaneye_session');
-  localStorage.removeItem('urbaneye_current_problem');
-  updateAuthButtons(false);
-  toast('Sessão encerrada.');
-  setTimeout(() => show('login'), 400);
 }
 
-function applyVisitorProfileState() {
-  const isProfilePage = window.location.pathname.toLowerCase().endsWith('profile.html');
-  if (!isProfilePage) return;
+async function renderProfileHeader() {
+  const data = await UrbanAPI.getProfileData();
 
   const name = document.getElementById('profileName');
-  if (name) name.textContent = 'Visitante';
+  if (name) name.textContent = data.name;
 
   const memberSince = document.getElementById('profileMemberSince');
-  if (memberSince) memberSince.textContent = 'Acesse sua conta para personalizar';
+  if (memberSince) memberSince.textContent = data.memberSince;
+
+  const avatar = document.querySelector('.profile-avatar') || document.querySelector('.avatar');
+  if (avatar) avatar.textContent = (data.name || 'V').trim().charAt(0).toUpperCase();
 
   const fields = [
-    ['profileReports', '0'],
-    ['profileResolved', '0'],
-    ['profileConfirmations', '0'],
-    ['profilePoints', '0']
+    ['profileReports', data.reports],
+    ['profileResolved', data.resolved],
+    ['profileConfirmations', data.confirmations],
+    ['profilePoints', data.points]
   ];
 
   fields.forEach(([id, value]) => {
@@ -280,16 +263,10 @@ function applyVisitorProfileState() {
 document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
 
-  const path = window.location.pathname.toLowerCase();
-  const isAuthPage = path.endsWith('login.html') || path.endsWith('register.html');
-
-  if (!isAuthPage) {
-    await syncAuthStatus();
-  } else {
-    updateAuthButtons(false);
+  if (window.UrbanAuth) {
+    await window.UrbanAuth.ready;
+    if (window.UrbanAuth.getState().redirecting) return;
   }
-
-  applyVisitorProfileState();
 
   // Route Controllers
   if (document.getElementById('homeCount')) loadHome();
@@ -297,10 +274,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (document.getElementById('realMap')) initMapPage();
   if (document.getElementById('historyBox')) renderHistory('historyBox');
   if (document.getElementById('profileHistoryBox')) renderHistory('profileHistoryBox', 3);
+  if (document.getElementById('profileName')) renderProfileHeader();
   if (document.getElementById('statsGrid')) renderStats();
   if (document.getElementById('detailCat')) populateDetail();
   if (document.getElementById('btnLogin')) initLoginPage();
 });
+
 
 async function loadHome() {
   const problems = await UrbanAPI.getProblems();
@@ -363,7 +342,7 @@ function renderMapData(problems) {
     });
     L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup(
       `<b>${p.cat}</b><br>${p.desc}<br><span style="font-size:12px;color:gray">${p.status}</span><br>
-       <button onclick="openProblem(${p.id})" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;background:var(--primary);color:white;border:0;cursor:pointer">Ver detalhes</button>`
+       <button onclick="openProblem(${JSON.stringify(p.id)})" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;background:var(--primary);color:white;border:0;cursor:pointer">Ver detalhes</button>`
     );
   });
   document.getElementById('mapCount').textContent = problems.length + ' problemas recuperados';
@@ -647,22 +626,17 @@ function previewPhoto(input) {
 window.addEventListener('pagehide', stopCamera);
 
 async function sendReport() {
-  if (!isLoggedIn()) {
-    toast('Você precisa estar com a conta ativa para publicar um relato.');
-    setTimeout(() => show('login'), 700);
-    return;
-  }
-
   const cat = document.getElementById('reportCategory').value;
   const desc = document.getElementById('reportDescription').value.trim();
   if (!desc) { toast('Descreva o problema antes de publicar.'); return }
 
+  const isAuthenticated = !!(window.UrbanAuth && window.UrbanAuth.isAuthenticated());
   const btn = document.getElementById('btnSubmitReport');
-  btn.textContent = 'Enviando para API...';
+  btn.textContent = isAuthenticated ? 'Enviando para API...' : 'Salvando localmente...';
   btn.disabled = true;
 
   try {
-    if (hasSupabaseAuth()) {
+    if (isAuthenticated && hasSupabaseAuth()) {
       const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
       if (userError || !userData?.user) {
         throw new Error('Sessão do Supabase inválida. Faça login novamente.');
@@ -687,7 +661,9 @@ async function sendReport() {
       lat, lng, cat, status: 'Aberto', desc, photo: capturedPhoto, color: colors[cat] || '#1769e0'
     });
 
-    const message = hasSupabaseAuth() ? 'Relato publicado com sucesso!' : 'Relato publicado com sucesso (API simulada)!';
+    const message = isAuthenticated
+      ? 'Relato publicado com sucesso!'
+      : 'Relato salvo no modo visitante. Ele aparece apenas neste navegador.';
     toast(message);
     setTimeout(() => show('map'), 800);
   } catch (error) {
@@ -703,15 +679,24 @@ async function renderHistory(elementId, limit = null) {
   const box = document.getElementById(elementId);
   if (!box) return;
 
-  let problems = await UrbanAPI.getProblems();
+  let problems = await UrbanAPI.getMyReports();
   if (limit) problems = problems.slice(0, limit);
+
+  if (!problems.length) {
+    const guestMessage = window.UrbanAuth && !window.UrbanAuth.isAuthenticated()
+      ? 'Você ainda não publicou relatos neste navegador. Entre na conta para ver seu histórico completo.'
+      : 'Você ainda não publicou nenhum relato.';
+    box.innerHTML = `<div class="empty-state"><div class="small muted">${guestMessage}</div></div>`;
+    return;
+  }
 
   const rows = problems.map(p => `
     <div class="listitem">
-      <i class="dot" style="background:${p.color}"></i>
+      <i class="dot" style="background:${p.color || '#1769e0'}"></i>
       <div style="flex:1">
         <div class="between"><b>${p.cat}</b><span class="status ${p.status === 'Resolvido' ? 'resolved' : p.status === 'Em análise' ? 'progress' : 'open'}">${p.status}</span></div>
         <div class="small muted">${p.desc}</div>
+        ${p.is_guest ? '<div class="small guest-tag">Salvo apenas neste navegador</div>' : ''}
       </div>
     </div>`).join('');
   box.innerHTML = rows;
@@ -741,8 +726,10 @@ async function exportData() {
 }
 
 function clearLocalData() {
-  if (confirm('Apagar o cache local da API simulada?')) {
+  if (confirm('Apagar os dados salvos localmente neste navegador?')) {
     localStorage.removeItem('urbaneye_data');
+    localStorage.removeItem('urbaneye_guest_reports');
+    localStorage.removeItem('urbaneye_current_problem');
     location.reload();
   }
 }
