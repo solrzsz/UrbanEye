@@ -527,6 +527,8 @@ async function populateDetail() {
   const currentUser = window.UrbanAuth?.getUser?.();
   const isReportOwner = !!(currentUser?.id && p.user_id && String(currentUser.id) === String(p.user_id));
   if (statusEditor) statusEditor.hidden = !isReportOwner;
+  const deleteCard = document.getElementById('detailDeleteCard');
+  if (deleteCard) deleteCard.hidden = !(p.is_guest || isReportOwner);
   const statusSelect = document.getElementById('detailStatusSelect');
   if (statusSelect) statusSelect.value = p.status;
   document.getElementById('detailDesc').textContent = p.desc;
@@ -941,7 +943,7 @@ async function renderHistory(elementId, limit = null) {
   });
 }
 
-async function deleteProblem(reportId, elementId) {
+async function deleteProblem(reportId, elementId, returnToMap = false) {
   if (!confirm('Tem certeza de que deseja apagar este relato?')) return;
 
   try {
@@ -952,11 +954,25 @@ async function deleteProblem(reportId, elementId) {
     }
 
     toast('Relato apagado.');
+    if (returnToMap) {
+      localStorage.removeItem('urbaneye_current_problem');
+      setTimeout(() => show('map'), 500);
+      return;
+    }
     await renderHistory(elementId, elementId === 'profileHistoryBox' ? 3 : null);
   } catch (error) {
     console.error('Erro ao apagar relato:', error);
     toast(error?.message || 'Não foi possível apagar o relato.');
   }
+}
+
+function deleteCurrentProblem() {
+  const id = localStorage.getItem('urbaneye_current_problem');
+  if (!id) {
+    toast('Relato não localizado.');
+    return;
+  }
+  deleteProblem(id, null, true);
 }
 
 async function renderStats() {

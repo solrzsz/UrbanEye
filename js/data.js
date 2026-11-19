@@ -270,14 +270,23 @@ window.UrbanAPI = {
             throw new Error('Supabase não configurado.');
         }
 
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para apagar o relato.');
+        }
+
         const { data, error } = await window.supabaseClient
             .from('reports')
             .delete()
             .eq('id', reportId)
+            .eq('user_id', user.id)
             .select('id');
 
         if (error) throw error;
-        return !!data?.length;
+        const deleted = !!data?.length;
+        if (deleted) invalidateCurrentUserCache();
+        return deleted;
     },
 
     async getProfileData() {
