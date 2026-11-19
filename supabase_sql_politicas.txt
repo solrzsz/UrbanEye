@@ -14,21 +14,26 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "Usuário pode ver seu próprio perfil" on public.profiles;
 create policy "Usuário pode ver seu próprio perfil"
 on public.profiles
 for select
 using (auth.uid() = id);
 
+drop policy if exists "Usuário pode inserir seu próprio perfil" on public.profiles;
 create policy "Usuário pode inserir seu próprio perfil"
 on public.profiles
 for insert
 with check (auth.uid() = id);
 
+drop policy if exists "Usuário pode atualizar seu próprio perfil" on public.profiles;
 create policy "Usuário pode atualizar seu próprio perfil"
 on public.profiles
 for update
 using (auth.uid() = id)
 with check (auth.uid() = id);
+
+grant select, insert, update on public.profiles to authenticated;
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -171,6 +176,42 @@ for each row execute procedure public.update_report_confirmation_count();
 -- Storage > Create bucket
 -- Nome: report-photos
 -- Tipo: public
+
+-- 8.1) Bucket público para avatares, com gravação restrita ao próprio usuário
+insert into storage.buckets (id, name, public)
+values ('profile-avatars', 'profile-avatars', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "Leitura pública de avatares" on storage.objects;
+create policy "Leitura pública de avatares"
+on storage.objects
+for select
+to public
+using (bucket_id = 'profile-avatars');
+
+drop policy if exists "Usuário envia seu avatar" on storage.objects;
+create policy "Usuário envia seu avatar"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'profile-avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "Usuário atualiza seu avatar" on storage.objects;
+create policy "Usuário atualiza seu avatar"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'profile-avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+)
+with check (
+  bucket_id = 'profile-avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
 
 -- 9) Opcional: testar criação de usuário via SQL/console
 -- const { data, error } = await supabase.auth.signUp({

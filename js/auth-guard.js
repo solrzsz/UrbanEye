@@ -73,6 +73,14 @@
     try { localStorage.removeItem('urbaneye_logged_in'); } catch (error) { /* ignore */ }
     try { localStorage.removeItem('urbaneye_user'); } catch (error) { /* ignore */ }
     try { localStorage.removeItem('urbaneye_session'); } catch (error) { /* ignore */ }
+    try {
+      for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+        const key = sessionStorage.key(index);
+        if (key && key.startsWith('urbaneye_user_cache_v1_')) sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('Não foi possível limpar o cache do perfil:', error);
+    }
   }
 
   function isAuthenticated() {

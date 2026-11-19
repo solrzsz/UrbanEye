@@ -8,6 +8,46 @@ const defaultProblems = [
 
 const GUEST_REPORTS_KEY = 'urbaneye_guest_reports';
 const MAX_GUEST_REPORTS = 25;
+const USER_CACHE_PREFIX = 'urbaneye_user_cache_v1_';
+const USER_CACHE_TTL = 5 * 60 * 1000;
+const userReportsRequests = new Map();
+
+function readUserCache(type, userId) {
+    try {
+        const key = `${USER_CACHE_PREFIX}${type}_${userId}`;
+        const cached = JSON.parse(sessionStorage.getItem(key) || 'null');
+        if (!cached || cached.expiresAt <= Date.now()) {
+            sessionStorage.removeItem(key);
+            return null;
+        }
+        return cached.data;
+    } catch (error) {
+        console.warn('Não foi possível ler o cache do perfil:', error);
+        return null;
+    }
+}
+
+function writeUserCache(type, userId, data) {
+    try {
+        sessionStorage.setItem(`${USER_CACHE_PREFIX}${type}_${userId}`, JSON.stringify({
+            expiresAt: Date.now() + USER_CACHE_TTL,
+            data
+        }));
+    } catch (error) {
+        console.warn('Não foi possível salvar o cache do perfil:', error);
+    }
+}
+
+function invalidateCurrentUserCache() {
+    const userId = window.UrbanAuth?.getUser?.()?.id;
+    if (!userId) return;
+    try {
+        sessionStorage.removeItem(`${USER_CACHE_PREFIX}profile_${userId}`);
+        sessionStorage.removeItem(`${USER_CACHE_PREFIX}reports_${userId}`);
+    } catch (error) {
+        console.warn('Não foi possível atualizar o cache do perfil:', error);
+    }
+}
 
 function useSupabaseData() {
     return !!(window.supabaseClient && window.supabaseClient.auth && window.supabaseClient.storage && window.urbaneyeSupabaseEnabled);
@@ -166,21 +206,39 @@ window.UrbanAPI = {
         if (!useSupabaseData()) return [];
 
         try {
-            const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
-            if (userError || !userData?.user) return [];
-
-            const { data, error } = await window.supabaseClient
-                .from('reports')
-                .select('*')
-                .eq('user_id', userData.user.id)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Erro ao buscar seus relatos:', error);
-                return [];
+            let user = window.UrbanAuth?.getUser?.() || null;
+            if (!user?.id) {
+                const { data, error } = await window.supabaseClient.auth.getSession();
+                if (error || !data?.session?.user) return [];
+                user = data.session.user;
             }
 
-            return (data || []).map(normalizeProblemRow);
+            const cachedReports = readUserCache('reports', user.id);
+            if (cachedReports) return cachedReports;
+            if (userReportsRequests.has(user.id)) return await userReportsRequests.get(user.id);
+
+            const reportsRequest = (async () => {
+                const { data, error } = await window.supabaseClient
+                    .from('reports')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Erro ao buscar seus relatos:', error);
+                    return [];
+                }
+
+                const reports = (data || []).map(normalizeProblemRow);
+                writeUserCache('reports', user.id, reports);
+                return reports;
+            })();
+            userReportsRequests.set(user.id, reportsRequest);
+            try {
+                return await reportsRequest;
+            } finally {
+                userReportsRequests.delete(user.id);
+            }
         } catch (error) {
             console.error('Erro ao buscar seus relatos:', error);
             return [];
@@ -188,14 +246,14 @@ window.UrbanAPI = {
     },
 
     async getProfileData() {
-        const reports = await this.getMyReports();
-        const resolved = reports.filter((report) => report.status === 'Resolvido').length;
-
         if (!isAuthenticatedNow()) {
+            const reports = await this.getMyReports();
+            const resolved = reports.filter((report) => report.status === 'Resolvido').length;
             return {
                 name: 'Visitante',
                 email: null,
                 memberSince: 'Modo visitante — dados salvos neste navegador',
+                avatarUrl: null,
                 reports: reports.length,
                 resolved,
                 confirmations: 0,
@@ -204,35 +262,43 @@ window.UrbanAPI = {
             };
         }
 
-        let user = null;
-        try {
-            const { data } = await window.supabaseClient.auth.getUser();
-            user = data?.user || null;
-        } catch (error) {
-            console.warn('Não foi possível carregar o usuário:', error);
+        let user = window.UrbanAuth?.getUser?.() || null;
+        if (!user?.id && useSupabaseData()) {
+            const { data, error } = await window.supabaseClient.auth.getSession();
+            if (error) console.warn('Não foi possível carregar a sessão do usuário:', error);
+            user = data?.session?.user || user;
         }
 
-        let fullName = user?.user_metadata?.full_name || '';
-        if (!fullName && user?.id && useSupabaseData()) {
+        const cachedProfile = user?.id ? readUserCache('profile', user.id) : null;
+        if (cachedProfile) return cachedProfile;
+
+        const reports = await this.getMyReports();
+        const resolved = reports.filter((report) => report.status === 'Resolvido').length;
+        let fullName = '';
+        let avatarUrl = null;
+        if (user?.id && useSupabaseData()) {
             try {
-                const { data: profile } = await window.supabaseClient
+                const { data: profile, error } = await window.supabaseClient
                     .from('profiles')
-                    .select('full_name')
+                    .select('full_name, avatar_url')
                     .eq('id', user.id)
                     .maybeSingle();
+                if (error) throw error;
                 fullName = profile?.full_name || '';
+                avatarUrl = profile?.avatar_url || null;
             } catch (error) {
                 console.warn('Não foi possível carregar o perfil:', error);
             }
         }
+        fullName = fullName || user?.user_metadata?.full_name || '';
 
-        const email = user?.email || null;
+        const email = user?.email || window.UrbanAuth?.getEmail?.() || null;
         const memberSince = user?.created_at
             ? 'Conta criada em ' + new Date(user.created_at).toLocaleDateString('pt-BR')
             : 'Conta conectada';
 
         let confirmations = 0;
-        if (useSupabaseData()) {
+        if (useSupabaseData() && user?.id) {
             const { count, error } = await window.supabaseClient
                 .from('report_confirmations')
                 .select('*', { count: 'exact', head: true })
@@ -240,16 +306,96 @@ window.UrbanAPI = {
             if (!error) confirmations = count || 0;
         }
 
-        return {
+        const profile = {
             name: fullName || (email ? email.split('@')[0] : 'Usuário'),
             email,
             memberSince,
+            avatarUrl,
             reports: reports.length,
             resolved,
             confirmations,
             points: reports.length * 10,
             isGuest: false
         };
+        if (user?.id) writeUserCache('profile', user.id, profile);
+        return profile;
+    },
+
+    async updateProfile({ fullName, avatarFile }) {
+        if (!isAuthenticatedNow() || !useSupabaseData()) {
+            throw new Error('Entre na sua conta para editar o perfil.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para editar o perfil.');
+        }
+
+        const normalizedName = String(fullName || '').trim();
+        if (!normalizedName || normalizedName.length > 80) {
+            throw new Error('Informe um nome com até 80 caracteres.');
+        }
+
+        const { data: existingProfile, error: profileReadError } = await window.supabaseClient
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileReadError) throw profileReadError;
+
+        let avatarUrl = existingProfile?.avatar_url || null;
+        if (avatarFile) {
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(avatarFile.type) || avatarFile.size > 5 * 1024 * 1024) {
+                throw new Error('Escolha uma imagem JPG, PNG ou WebP de até 5 MB.');
+            }
+
+            const { error: uploadError } = await window.supabaseClient.storage
+                .from('profile-avatars')
+                .upload(`${user.id}/avatar`, avatarFile, {
+                    cacheControl: '3600',
+                    contentType: avatarFile.type,
+                    upsert: true
+                });
+            if (uploadError) throw uploadError;
+
+            const { data: publicUrl } = window.supabaseClient.storage
+                .from('profile-avatars')
+                .getPublicUrl(`${user.id}/avatar`);
+            avatarUrl = `${publicUrl.publicUrl}?v=${Date.now()}`;
+        }
+
+        const profileChanges = {
+            email: user.email,
+            full_name: normalizedName,
+            avatar_url: avatarUrl,
+            updated_at: new Date().toISOString()
+        };
+        if (existingProfile) {
+            const { data: updatedProfile, error: updateError } = await window.supabaseClient
+                .from('profiles')
+                .update(profileChanges)
+                .eq('id', user.id)
+                .select('id')
+                .maybeSingle();
+            if (updateError) throw updateError;
+            if (!updatedProfile) {
+                throw new Error('Não foi possível atualizar o perfil. Confira as políticas RLS da tabela profiles no Supabase.');
+            }
+        } else {
+            const { error: insertError } = await window.supabaseClient
+                .from('profiles')
+                .insert({ id: user.id, ...profileChanges });
+            if (insertError) throw insertError;
+        }
+
+        try {
+            sessionStorage.removeItem(`${USER_CACHE_PREFIX}profile_${user.id}`);
+        } catch (error) {
+            console.warn('Não foi possível atualizar o cache do perfil:', error);
+        }
+        return { name: normalizedName, avatarUrl };
     },
 
     async getNotifications() {
@@ -309,6 +455,7 @@ window.UrbanAPI = {
             throw error;
         }
 
+        invalidateCurrentUserCache();
         return normalizeProblemRow(data);
     },
 
@@ -382,6 +529,7 @@ window.UrbanAPI = {
         }
 
         const count = await this.getProblemConfirmationCount(reportId);
+        invalidateCurrentUserCache();
         return {
             count,
             alreadyConfirmed: error?.code === '23505'

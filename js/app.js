@@ -1,4 +1,5 @@
 let map, userMarker, reportMap, reportMarker;
+let profileAvatarPreviewUrl = null;
 const municipalityCache = new Map();
 const municipalityRequests = new Map();
 let municipalityRequestQueue = Promise.resolve();
@@ -246,12 +247,24 @@ async function renderProfileHeader() {
 
   const name = document.getElementById('profileName');
   if (name) name.textContent = data.name;
+  const nameInput = document.getElementById('profileNameInput');
+  if (nameInput) nameInput.value = data.name === 'Visitante' ? '' : data.name;
 
   const memberSince = document.getElementById('profileMemberSince');
   if (memberSince) memberSince.textContent = data.memberSince;
 
   const avatar = document.querySelector('.profile-avatar') || document.querySelector('.avatar');
-  if (avatar) avatar.textContent = (data.name || 'V').trim().charAt(0).toUpperCase();
+  if (avatar) {
+    avatar.replaceChildren();
+    if (data.avatarUrl) {
+      const image = document.createElement('img');
+      image.src = data.avatarUrl;
+      image.alt = `Foto de perfil de ${data.name}`;
+      avatar.appendChild(image);
+    } else {
+      avatar.textContent = (data.name || 'V').trim().charAt(0).toUpperCase();
+    }
+  }
 
   const fields = [
     ['profileReports', data.reports],
@@ -264,6 +277,68 @@ async function renderProfileHeader() {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
   });
+}
+
+function previewProfileAvatar(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    input.value = '';
+    toast('Escolha uma imagem JPG, PNG ou WebP de até 5 MB.');
+    return;
+  }
+
+  const avatar = document.getElementById('profileAvatar');
+  if (!avatar) return;
+  if (profileAvatarPreviewUrl) URL.revokeObjectURL(profileAvatarPreviewUrl);
+  profileAvatarPreviewUrl = URL.createObjectURL(file);
+  const image = document.createElement('img');
+  image.src = profileAvatarPreviewUrl;
+  image.alt = 'Prévia da foto de perfil';
+  avatar.replaceChildren(image);
+}
+
+async function saveProfile() {
+  const nameInput = document.getElementById('profileNameInput');
+  const photoInput = document.getElementById('profileAvatarInput');
+  const button = document.getElementById('saveProfileButton');
+  const fullName = nameInput ? nameInput.value.trim() : '';
+  const avatarFile = photoInput?.files?.[0] || null;
+
+  if (!fullName) {
+    toast('Informe seu nome.');
+    nameInput?.focus();
+    return;
+  }
+
+  if (fullName.length > 80) {
+    toast('O nome deve ter no máximo 80 caracteres.');
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Salvando...';
+  }
+
+  try {
+    await UrbanAPI.updateProfile({ fullName, avatarFile });
+    if (profileAvatarPreviewUrl) {
+      URL.revokeObjectURL(profileAvatarPreviewUrl);
+      profileAvatarPreviewUrl = null;
+    }
+    if (photoInput) photoInput.value = '';
+    await renderProfileHeader();
+    toast('Perfil atualizado com sucesso!');
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    toast(error?.message || 'Não foi possível atualizar o perfil.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Salvar perfil';
+    }
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
