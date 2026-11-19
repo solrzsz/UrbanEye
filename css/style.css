@@ -669,7 +669,19 @@ p {
 .progressbar i {
   display: block;
   height: 100%;
-  background: var(--primary)
+  background: var(--primary);
+  transition: width 0.3s ease
+}
+
+.status-steps span {
+  opacity: 0.55
+}
+
+.status-steps span.is-complete,
+.status-steps span.is-current {
+  color: var(--primary);
+  opacity: 1;
+  font-weight: 800
 }
 
 .avatar {

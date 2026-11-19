@@ -494,12 +494,41 @@ function updateReportMunicipality(lat, lng) {
   }, 500);
 }
 
+function updateProblemStatusDisplay(status) {
+  const stages = ['Aberto', 'Em análise', 'Resolvido'];
+  const currentStage = Math.max(0, stages.indexOf(status));
+  const badge = document.getElementById('detailStatus');
+  if (badge) {
+    badge.textContent = status;
+    badge.className = `status ${status === 'Resolvido' ? 'resolved' : status === 'Em análise' ? 'progress' : 'open'}`;
+  }
+
+  const progress = document.getElementById('detailProgress');
+  const progressBar = document.getElementById('detailProgressBar');
+  if (progress) {
+    progress.setAttribute('aria-valuenow', String(currentStage + 1));
+    progress.setAttribute('aria-valuetext', `${status}, etapa ${currentStage + 1} de 3`);
+  }
+  if (progressBar) progressBar.style.width = `${((currentStage + 1) / stages.length) * 100}%`;
+
+  document.querySelectorAll('[data-status-step]').forEach((step, index) => {
+    step.classList.toggle('is-complete', index < currentStage);
+    step.classList.toggle('is-current', index === currentStage);
+  });
+}
+
 async function populateDetail() {
   const id = localStorage.getItem('urbaneye_current_problem');
   const p = await UrbanAPI.getProblemById(id);
   if (!p) return;
   document.getElementById('detailCat').textContent = p.cat;
-  document.getElementById('detailStatus').textContent = p.status;
+  updateProblemStatusDisplay(p.status);
+  const statusEditor = document.getElementById('detailStatusEditor');
+  const currentUser = window.UrbanAuth?.getUser?.();
+  const isReportOwner = !!(currentUser?.id && p.user_id && String(currentUser.id) === String(p.user_id));
+  if (statusEditor) statusEditor.hidden = !isReportOwner;
+  const statusSelect = document.getElementById('detailStatusSelect');
+  if (statusSelect) statusSelect.value = p.status;
   document.getElementById('detailDesc').textContent = p.desc;
   const municipality = p.municipality || await identifyMunicipality(p.lat, p.lng);
   const detailLocation = document.getElementById('detailLoc');
@@ -529,6 +558,32 @@ async function populateDetail() {
   if (confirmButton) {
     confirmButton.disabled = alreadyConfirmed;
     confirmButton.textContent = alreadyConfirmed ? '✓ Problema confirmado' : '✓ Confirmar problema';
+  }
+}
+
+async function saveProblemStatus() {
+  const id = localStorage.getItem('urbaneye_current_problem');
+  const select = document.getElementById('detailStatusSelect');
+  const button = document.getElementById('saveDetailStatusButton');
+  if (!id || !select) return;
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Salvando...';
+  }
+
+  try {
+    const status = await UrbanAPI.updateProblemStatus(id, select.value);
+    updateProblemStatusDisplay(status);
+    toast('Situação atualizada e salva.');
+  } catch (error) {
+    console.error('Erro ao atualizar situação do relato:', error);
+    toast(error?.message || 'Não foi possível atualizar a situação.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Salvar situação';
+    }
   }
 }
 

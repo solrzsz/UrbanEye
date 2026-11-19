@@ -57,6 +57,15 @@ function isAuthenticatedNow() {
     return !!(window.UrbanAuth && window.UrbanAuth.isAuthenticated && window.UrbanAuth.isAuthenticated());
 }
 
+function normalizeProblemStatus(status) {
+    const value = String(status || 'Aberto').trim();
+    const normalized = value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (['aberto', 'reportado', 'reported', 'pendente', 'pending'].includes(normalized)) return 'Aberto';
+    if (['em analise', 'analise', 'in analysis', 'in progress', 'under review'].includes(normalized)) return 'Em análise';
+    if (['resolvido', 'concluido', 'completed', 'resolved'].includes(normalized)) return 'Resolvido';
+    return value;
+}
+
 function normalizeProblemRow(row) {
     if (!row) return null;
     return {
@@ -64,7 +73,7 @@ function normalizeProblemRow(row) {
         id: row.id,
         cat: row.category || row.cat || 'Outro',
         desc: row.description || row.desc || 'Sem descrição',
-        status: row.status || 'Aberto',
+        status: normalizeProblemStatus(row.status),
         lat: Number(row.lat),
         lng: Number(row.lng),
         color: row.color || '#1769e0',
@@ -79,7 +88,7 @@ function normalizeProblemPayload(problem) {
     return {
         category: problem.cat,
         description: problem.desc,
-        status: problem.status,
+        status: normalizeProblemStatus(problem.status),
         lat: problem.lat,
         lng: problem.lng,
         color: problem.color || '#1769e0',
@@ -534,6 +543,38 @@ window.UrbanAPI = {
             count,
             alreadyConfirmed: error?.code === '23505'
         };
+    },
+
+    async updateProblemStatus(reportId, status) {
+        const normalizedStatus = normalizeProblemStatus(status);
+        if (!['Aberto', 'Em análise', 'Resolvido'].includes(normalizedStatus)) {
+            throw new Error('Situação inválida para o relato.');
+        }
+        if (!isAuthenticatedNow() || !useSupabaseData()) {
+            throw new Error('Entre na sua conta para atualizar a situação do relato.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para atualizar a situação.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('reports')
+            .update({ status: normalizedStatus })
+            .eq('id', reportId)
+            .eq('user_id', user.id)
+            .select('id, status')
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) {
+            throw new Error('Não foi possível atualizar. Apenas quem publicou o relato pode alterar a situação.');
+        }
+
+        invalidateCurrentUserCache();
+        return normalizeProblemStatus(data.status);
     },
 
     isGuest: () => !isAuthenticatedNow(),

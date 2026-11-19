@@ -68,7 +68,7 @@ create table public.reports (
   bairro text,
   color text,
   photo_url text,
-  status text default 'pendente',
+  status text default 'Aberto',
   user_id uuid references auth.users(id),
   created_at timestamptz default now()
 );
@@ -89,10 +89,31 @@ for insert
 with check (auth.uid() = user_id);
 
 -- 5) Política para atualização do usuário
+drop policy if exists "Permitir atualização do usuário" on public.reports;
 create policy "Permitir atualização do usuário"
 on public.reports
 for update
-using (auth.uid() = user_id);
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+grant select, insert, update, delete on public.reports to authenticated;
+
+-- Padroniza os status usados pelo aplicativo e mantém novos relatos como reportados
+update public.reports
+set status = case
+  when lower(trim(status)) in ('em análise', 'em analise', 'analysis', 'in progress') then 'Em análise'
+  when lower(trim(status)) in ('resolvido', 'concluído', 'concluido', 'completed', 'resolved') then 'Resolvido'
+  else 'Aberto'
+end
+where status is null
+   or lower(trim(status)) in (
+     'aberto', 'reportado', 'reported', 'pendente', 'pending',
+     'em análise', 'em analise', 'analysis', 'in progress',
+     'resolvido', 'concluído', 'concluido', 'completed', 'resolved'
+   );
+
+alter table public.reports
+  alter column status set default 'Aberto';
 
 -- 6) Política para exclusão do usuário
 create policy "Permitir exclusão do usuário"
