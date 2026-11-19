@@ -185,6 +185,32 @@ window.UrbanAPI = {
             console.error('Erro ao buscar seus relatos:', error);
             return [];
         }
+        
+    },
+
+    async deleteProblem(reportId) {
+        if (!isAuthenticatedNow()) {
+            const reports = readGuestReports();
+            const remaining = reports.filter(
+                report => String(report.id) !== String(reportId)
+            );
+
+            if (remaining.length === reports.length) return false;
+            return writeGuestReports(remaining);
+        }
+
+        if (!useSupabaseData()) {
+            throw new Error('Supabase não configurado.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('reports')
+            .delete()
+            .eq('id', reportId)
+            .select('id');
+
+        if (error) throw error;
+        return !!data?.length;
     },
 
     async getProfileData() {

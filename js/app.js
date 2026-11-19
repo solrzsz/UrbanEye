@@ -791,7 +791,7 @@ async function renderHistory(elementId, limit = null) {
     return;
   }
 
-  const rows = problems.map(p => `
+  box.innerHTML = problems.map(p => `
     <div class="listitem">
       <i class="dot" style="background:${p.color || '#1769e0'}"></i>
       <div style="flex:1">
@@ -799,8 +799,34 @@ async function renderHistory(elementId, limit = null) {
         <div class="small muted">${p.desc}</div>
         ${p.is_guest ? '<div class="small guest-tag">Salvo apenas neste navegador</div>' : ''}
       </div>
+      <button type="button" class="delete-report-button" data-report-id="${p.id}"
+        aria-label="Apagar relato: ${p.cat}"
+        style="margin-left:12px;padding:8px 12px;border:0;border-radius:8px;background:#c62828;color:white;cursor:pointer">
+        Apagar
+      </button>
     </div>`).join('');
-  box.innerHTML = rows;
+
+  box.querySelectorAll('.delete-report-button').forEach(button => {
+    button.addEventListener('click', () => deleteProblem(button.dataset.reportId, elementId));
+  });
+}
+
+async function deleteProblem(reportId, elementId) {
+  if (!confirm('Tem certeza de que deseja apagar este relato?')) return;
+
+  try {
+    const deleted = await UrbanAPI.deleteProblem(reportId);
+    if (!deleted) {
+      toast('Relato não encontrado ou você não pode apagá-lo.');
+      return;
+    }
+
+    toast('Relato apagado.');
+    await renderHistory(elementId, elementId === 'profileHistoryBox' ? 3 : null);
+  } catch (error) {
+    console.error('Erro ao apagar relato:', error);
+    toast(error?.message || 'Não foi possível apagar o relato.');
+  }
 }
 
 async function renderStats() {
