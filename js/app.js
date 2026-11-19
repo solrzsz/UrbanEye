@@ -1,4 +1,5 @@
 let map, userMarker, reportMap, reportMarker;
+let currentDetailProblem = null;
 let profileAvatarPreviewUrl = null;
 const municipalityCache = new Map();
 const municipalityRequests = new Map();
@@ -533,6 +534,7 @@ async function populateDetail() {
   localStorage.removeItem('urbaneye_edit_problem_on_open');
   const p = await UrbanAPI.getProblemById(id);
   if (!p) return;
+  currentDetailProblem = p;
   document.getElementById('detailCat').textContent = p.cat;
   updateProblemStatusDisplay(p.status);
   const statusEditor = document.getElementById('detailStatusEditor');
@@ -561,6 +563,17 @@ async function populateDetail() {
       ? `📍 ${municipality} · Dados © OpenStreetMap`
       : `📍 ${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)} · Dados © OpenStreetMap`;
   }
+  const coordinates = document.getElementById('detailCoordinates');
+  const hasCoordinates = p.lat !== null && p.lat !== undefined && p.lng !== null && p.lng !== undefined
+    && String(p.lat).trim() !== '' && String(p.lng).trim() !== ''
+    && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng));
+  if (coordinates) {
+    coordinates.textContent = hasCoordinates
+      ? `Coordenadas: ${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)}`
+      : '';
+  }
+  const wazeButton = document.getElementById('detailWazeButton');
+  if (wazeButton) wazeButton.hidden = !hasCoordinates;
   const photoBox = document.getElementById('detailPhoto');
   if (photoBox) {
     if (p.photo) {
@@ -583,6 +596,27 @@ async function populateDetail() {
     confirmButton.disabled = alreadyConfirmed;
     confirmButton.textContent = alreadyConfirmed ? '✓ Problema confirmado' : '✓ Confirmar problema';
   }
+}
+
+function openProblemInWaze() {
+  const rawLat = currentDetailProblem?.lat;
+  const rawLng = currentDetailProblem?.lng;
+  if (rawLat === null || rawLat === undefined || rawLng === null || rawLng === undefined
+      || String(rawLat).trim() === '' || String(rawLng).trim() === '') {
+    toast('As coordenadas deste relato não estão disponíveis.');
+    return;
+  }
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    toast('As coordenadas deste relato não estão disponíveis.');
+    return;
+  }
+
+  const url = new URL('https://waze.com/ul');
+  url.searchParams.set('ll', `${lat},${lng}`);
+  url.searchParams.set('navigate', 'yes');
+  window.open(url.toString(), '_blank', 'noopener,noreferrer');
 }
 
 function openProblemEditor() {
