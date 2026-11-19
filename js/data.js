@@ -29,7 +29,8 @@ function normalizeProblemRow(row) {
         lng: Number(row.lng),
         color: row.color || '#1769e0',
         photo: row.photo_url || row.photo || null,
-        bairro: row.bairro || row.neighborhood || null
+        bairro: row.bairro || row.neighborhood || null,
+        confirmation_count: Number(row.confirmation_count || 0)
     };
 }
 
@@ -228,13 +229,22 @@ window.UrbanAPI = {
             ? 'Conta criada em ' + new Date(user.created_at).toLocaleDateString('pt-BR')
             : 'Conta conectada';
 
+        let confirmations = 0;
+        if (useSupabaseData()) {
+            const { count, error } = await window.supabaseClient
+                .from('report_confirmations')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+            if (!error) confirmations = count || 0;
+        }
+
         return {
             name: fullName || (email ? email.split('@')[0] : 'Usuário'),
             email,
             memberSince,
             reports: reports.length,
             resolved,
-            confirmations: 0,
+            confirmations,
             points: reports.length * 10,
             isGuest: false
         };
@@ -306,6 +316,72 @@ window.UrbanAPI = {
             resolved: data.filter(p => p.status === 'Resolvido').length,
             analysis: data.filter(p => p.status === 'Em análise').length,
             open: data.filter(p => p.status === 'Aberto').length
+        };
+    },
+
+    async getProblemConfirmationCount(reportId) {
+        if (!useSupabaseData()) return 0;
+
+        const { count, error } = await window.supabaseClient
+            .from('report_confirmations')
+            .select('*', { count: 'exact', head: true })
+            .eq('report_id', reportId);
+
+        if (error) {
+            console.error('Erro ao buscar confirmações do relato:', error);
+            return 0;
+        }
+        return count || 0;
+    },
+
+    async hasConfirmedProblem(reportId) {
+        if (!useSupabaseData() || !isAuthenticatedNow()) return false;
+
+        const { data: userData } = await window.supabaseClient.auth.getUser();
+        const user = userData?.user;
+        if (!user) return false;
+
+        const { data, error } = await window.supabaseClient
+            .from('report_confirmations')
+            .select('report_id')
+            .eq('report_id', reportId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Erro ao verificar confirmação:', error);
+            return false;
+        }
+        return !!data;
+    },
+
+    async confirmProblem(reportId) {
+        if (!useSupabaseData()) {
+            toast('O Supabase precisa estar configurado para confirmar problemas.');
+            return null;
+        }
+
+        const { data: userData, error: userError } = await window.supabaseClient.auth.getUser();
+        const user = userData?.user;
+        if (userError || !user) {
+            requireLogin();
+            return null;
+        }
+
+        const { error } = await window.supabaseClient
+            .from('report_confirmations')
+            .insert({ report_id: reportId, user_id: user.id });
+
+        if (error && error.code !== '23505') {
+            console.error('Erro ao confirmar problema:', error);
+            toast('Não foi possível confirmar o problema.');
+            return null;
+        }
+
+        const count = await this.getProblemConfirmationCount(reportId);
+        return {
+            count,
+            alreadyConfirmed: error?.code === '23505'
         };
     },
 

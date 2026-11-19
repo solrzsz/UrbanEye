@@ -373,7 +373,31 @@ async function populateDetail() {
       photoBox.textContent = 'Foto do problema';
     }
   }
-  document.getElementById('detailConfirmCount').textContent = Math.floor(Math.random() * 50) + 1; // Fake confirm count
+  const count = await UrbanAPI.getProblemConfirmationCount(id);
+  document.getElementById('detailConfirmCount').textContent = String(count);
+
+  const alreadyConfirmed = await UrbanAPI.hasConfirmedProblem(id);
+  const confirmButton = document.getElementById('detailConfirmButton');
+  if (confirmButton) {
+    confirmButton.disabled = alreadyConfirmed;
+    confirmButton.textContent = alreadyConfirmed ? '✓ Problema confirmado' : '✓ Confirmar problema';
+  }
+}
+
+async function confirmProblemDetail() {
+  const id = localStorage.getItem('urbaneye_current_problem');
+  if (!id) return;
+
+  const result = await UrbanAPI.confirmProblem(id);
+  if (!result) return;
+
+  document.getElementById('detailConfirmCount').textContent = String(result.count);
+  const confirmButton = document.getElementById('detailConfirmButton');
+  if (confirmButton) {
+    confirmButton.disabled = true;
+    confirmButton.textContent = '✓ Problema confirmado';
+  }
+  toast(result.alreadyConfirmed ? 'Você já confirmou este problema.' : 'Problema confirmado!');
 }
 
 
