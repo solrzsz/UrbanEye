@@ -634,6 +634,33 @@ p {
   padding-bottom: 0
 }
 
+.report-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: 12px;
+  flex-shrink: 0
+}
+
+.report-actions button {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer
+}
+
+.report-actions .edit-report-button {
+  border-color: var(--primary);
+  color: var(--primary)
+}
+
+.report-actions .delete-report-button {
+  border-color: var(--danger);
+  background: #c62828;
+  color: white
+}
+
 .dot {
   width: 12px;
   height: 12px;

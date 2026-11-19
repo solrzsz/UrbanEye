@@ -60,6 +60,16 @@ function show(id) {
   window.location.href = target;
 }
 
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
+}
+
 function toast(t) {
   let x = document.getElementById('toast');
   x.textContent = t;
@@ -422,7 +432,7 @@ function renderMapData(problems) {
       iconAnchor: [12, 12]
     });
     L.marker([p.lat, p.lng], { icon }).addTo(map).bindPopup(
-      `<b>${p.cat}</b><br>${p.desc}<br><span style="font-size:12px;color:gray">${p.status}</span><br>
+      `<b>${escapeHTML(p.cat)}</b><br>${escapeHTML(p.desc)}<br><span style="font-size:12px;color:gray">${escapeHTML(p.status)}</span><br>
        <button onclick="openProblem(${JSON.stringify(p.id)})" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;background:var(--primary);color:white;border:0;cursor:pointer">Ver detalhes</button>`
     );
   });
@@ -519,6 +529,8 @@ function updateProblemStatusDisplay(status) {
 
 async function populateDetail() {
   const id = localStorage.getItem('urbaneye_current_problem');
+  const shouldOpenEditor = localStorage.getItem('urbaneye_edit_problem_on_open') === 'true';
+  localStorage.removeItem('urbaneye_edit_problem_on_open');
   const p = await UrbanAPI.getProblemById(id);
   if (!p) return;
   document.getElementById('detailCat').textContent = p.cat;
@@ -526,6 +538,16 @@ async function populateDetail() {
   const statusEditor = document.getElementById('detailStatusEditor');
   const currentUser = window.UrbanAuth?.getUser?.();
   const isReportOwner = !!(currentUser?.id && p.user_id && String(currentUser.id) === String(p.user_id));
+  const editCard = document.getElementById('detailEditCard');
+  const canEdit = p.is_guest || isReportOwner;
+  if (editCard) editCard.hidden = !canEdit;
+  const editCategory = document.getElementById('editProblemCategory');
+  if (editCategory) editCategory.value = p.cat;
+  const editDescription = document.getElementById('editProblemDescription');
+  if (editDescription) editDescription.value = p.desc;
+  const editor = document.getElementById('detailEditor');
+  if (editor) editor.hidden = true;
+  if (shouldOpenEditor && canEdit) openProblemEditor();
   if (statusEditor) statusEditor.hidden = !isReportOwner;
   const deleteCard = document.getElementById('detailDeleteCard');
   if (deleteCard) deleteCard.hidden = !(p.is_guest || isReportOwner);
@@ -560,6 +582,57 @@ async function populateDetail() {
   if (confirmButton) {
     confirmButton.disabled = alreadyConfirmed;
     confirmButton.textContent = alreadyConfirmed ? '✓ Problema confirmado' : '✓ Confirmar problema';
+  }
+}
+
+function openProblemEditor() {
+  const editCard = document.getElementById('detailEditCard');
+  const editor = document.getElementById('detailEditor');
+  if (editCard) editCard.hidden = true;
+  if (editor) editor.hidden = false;
+}
+
+function cancelProblemEditor() {
+  const editCard = document.getElementById('detailEditCard');
+  const editor = document.getElementById('detailEditor');
+  if (editor) editor.hidden = true;
+  if (editCard) editCard.hidden = false;
+}
+
+async function saveProblemDetails() {
+  const reportId = localStorage.getItem('urbaneye_current_problem');
+  const categoryInput = document.getElementById('editProblemCategory');
+  const descriptionInput = document.getElementById('editProblemDescription');
+  const button = document.getElementById('saveProblemDetailsButton');
+  const description = descriptionInput?.value.trim() || '';
+  if (!reportId || !categoryInput || !description) {
+    toast('Informe a descrição do relato.');
+    descriptionInput?.focus();
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Salvando...';
+  }
+
+  try {
+    const updated = await UrbanAPI.updateProblemDetails(reportId, {
+      category: categoryInput.value,
+      description
+    });
+    document.getElementById('detailCat').textContent = updated.cat;
+    document.getElementById('detailDesc').textContent = updated.desc;
+    cancelProblemEditor();
+    toast('Detalhes do relato atualizados.');
+  } catch (error) {
+    console.error('Erro ao editar relato:', error);
+    toast(error?.message || 'Não foi possível salvar as alterações.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Salvar alterações';
+    }
   }
 }
 
@@ -927,20 +1000,29 @@ async function renderHistory(elementId, limit = null) {
     <div class="listitem">
       <i class="dot" style="background:${p.color || '#1769e0'}"></i>
       <div style="flex:1">
-        <div class="between"><b>${p.cat}</b><span class="status ${p.status === 'Resolvido' ? 'resolved' : p.status === 'Em análise' ? 'progress' : 'open'}">${p.status}</span></div>
-        <div class="small muted">${p.desc}</div>
+        <div class="between"><b>${escapeHTML(p.cat)}</b><span class="status ${p.status === 'Resolvido' ? 'resolved' : p.status === 'Em análise' ? 'progress' : 'open'}">${escapeHTML(p.status)}</span></div>
+        <div class="small muted">${escapeHTML(p.desc)}</div>
         ${p.is_guest ? '<div class="small guest-tag">Salvo apenas neste navegador</div>' : ''}
       </div>
-      <button type="button" class="delete-report-button" data-report-id="${p.id}"
-        aria-label="Apagar relato: ${p.cat}"
-        style="margin-left:12px;padding:8px 12px;border:0;border-radius:8px;background:#c62828;color:white;cursor:pointer">
-        Apagar
-      </button>
+      <div class="report-actions">
+        <button type="button" class="edit-report-button" data-report-id="${escapeHTML(p.id)}"
+          aria-label="Editar relato: ${escapeHTML(p.cat)}">Editar</button>
+        <button type="button" class="delete-report-button" data-report-id="${escapeHTML(p.id)}"
+          aria-label="Apagar relato: ${escapeHTML(p.cat)}">Apagar</button>
+      </div>
     </div>`).join('');
 
+  box.querySelectorAll('.edit-report-button').forEach(button => {
+    button.addEventListener('click', () => editProblemFromHistory(button.dataset.reportId));
+  });
   box.querySelectorAll('.delete-report-button').forEach(button => {
     button.addEventListener('click', () => deleteProblem(button.dataset.reportId, elementId));
   });
+}
+
+function editProblemFromHistory(reportId) {
+  localStorage.setItem('urbaneye_edit_problem_on_open', 'true');
+  openProblem(reportId);
 }
 
 async function deleteProblem(reportId, elementId, returnToMap = false) {

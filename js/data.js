@@ -612,6 +612,69 @@ window.UrbanAPI = {
         return normalizeProblemStatus(data.status);
     },
 
+    async updateProblemDetails(reportId, { category, description }) {
+        const allowedCategories = [
+            'Buraco na rua',
+            'Falta de iluminação',
+            'Enchente',
+            'Falta de segurança',
+            'Outro'
+        ];
+        const normalizedCategory = String(category || '').trim();
+        const normalizedDescription = String(description || '').trim();
+        if (!allowedCategories.includes(normalizedCategory)) {
+            throw new Error('Selecione uma categoria válida.');
+        }
+        if (!normalizedDescription || normalizedDescription.length > 2000) {
+            throw new Error('A descrição deve ter entre 1 e 2000 caracteres.');
+        }
+        if (!isAuthenticatedNow()) {
+            const reports = readGuestReports();
+            const reportIndex = reports.findIndex((report) => String(report.id) === String(reportId));
+            if (reportIndex < 0) {
+                throw new Error('Relato não encontrado no armazenamento local.');
+            }
+
+            reports[reportIndex] = {
+                ...reports[reportIndex],
+                category: normalizedCategory,
+                description: normalizedDescription
+            };
+            if (!writeGuestReports(reports)) {
+                throw new Error('Não foi possível salvar as alterações neste navegador.');
+            }
+            return normalizeProblemRow(reports[reportIndex]);
+        }
+        if (!useSupabaseData()) {
+            throw new Error('Entre na sua conta para editar este relato.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para editar o relato.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('reports')
+            .update({
+                category: normalizedCategory,
+                description: normalizedDescription
+            })
+            .eq('id', reportId)
+            .eq('user_id', user.id)
+            .select('*')
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) {
+            throw new Error('Não foi possível editar. Apenas quem publicou o relato pode alterá-lo.');
+        }
+
+        invalidateCurrentUserCache();
+        return normalizeProblemRow(data);
+    },
+
     isGuest: () => !isAuthenticatedNow(),
     getGuestReports: readGuestReports
 };

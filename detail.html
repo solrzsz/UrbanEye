@@ -53,6 +53,12 @@
   <div class="card"><div class="report-img" id="detailPhoto">Foto do problema</div><div class="between" style="margin-top:13px"><h2 id="detailCat" style="margin:0">Carregando...</h2><span id="detailStatus" class="status progress">-</span></div><p id="detailLoc" class="muted" style="font-size:14px;margin:8px 0">📍 Identificando localização...</p><p id="detailDesc" style="font-size:15px">...</p>
   <div class="small muted">Publicado via API • <span id="detailConfirmCount">0</span> confirmações</div></div>
   <div>
+    <div id="detailEditCard" class="card" hidden><button type="button" class="btn secondary" onclick="openProblemEditor()">Editar detalhes</button></div>
+    <div id="detailEditor" class="card" hidden>
+      <div class="field"><label for="editProblemCategory">Categoria</label><select id="editProblemCategory"><option>Buraco na rua</option><option>Falta de iluminação</option><option>Enchente</option><option>Falta de segurança</option><option>Outro</option></select></div>
+      <div class="field"><label for="editProblemDescription">Descrição</label><textarea id="editProblemDescription" maxlength="2000"></textarea></div>
+      <div class="between"><button id="saveProblemDetailsButton" type="button" class="btn" onclick="saveProblemDetails()">Salvar alterações</button><button type="button" class="btn secondary" onclick="cancelProblemEditor()">Cancelar</button></div>
+    </div>
     <div class="card"><b>Andamento</b><div id="detailProgress" style="margin:14px 0" class="progressbar" role="progressbar" aria-label="Andamento do relato" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1"><i id="detailProgressBar" style="width:33.33%"></i></div><div class="between small status-steps"><span data-status-step="Aberto">Reportado</span><span data-status-step="Em análise">Em análise</span><span data-status-step="Resolvido">Concluído</span></div></div>
     <div id="detailStatusEditor" class="card" hidden><label for="detailStatusSelect"><b>Atualizar situação</b></label><div class="field"><select id="detailStatusSelect"><option value="Aberto">Reportado</option><option value="Em análise">Em análise</option><option value="Resolvido">Concluído</option></select></div><button id="saveDetailStatusButton" class="btn secondary" onclick="saveProblemStatus()">Salvar situação</button></div>
     <div id="detailDeleteCard" class="card" hidden><button id="detailDeleteButton" class="btn secondary" style="border-color:var(--danger);color:var(--danger)" onclick="deleteCurrentProblem()">Excluir relato</button></div>
