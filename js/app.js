@@ -1,4 +1,10 @@
 let map, userMarker, reportMap, reportMarker;
+const municipalityCache = new Map();
+const municipalityRequests = new Map();
+let municipalityRequestQueue = Promise.resolve();
+let lastGeocodeRequestAt = 0;
+let reportGeocodeSequence = 0;
+let reportGeocodeTimer = null;
 
 // Theme Logic
 function setTheme(theme) {
@@ -353,6 +359,66 @@ function openProblem(id) {
   show('detail');
 }
 
+async function identifyMunicipality(lat, lng) {
+  const cacheKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
+  if (municipalityCache.has(cacheKey)) return municipalityCache.get(cacheKey);
+  if (municipalityRequests.has(cacheKey)) return municipalityRequests.get(cacheKey);
+
+  const request = municipalityRequestQueue.then(async () => {
+    const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeRequestAt));
+    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+    lastGeocodeRequestAt = Date.now();
+
+    try {
+      const params = new URLSearchParams({
+        format: 'jsonv2',
+        lat: String(lat),
+        lon: String(lng),
+        zoom: '10',
+        addressdetails: '1',
+        'accept-language': 'pt-BR'
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`);
+      if (!response.ok) throw new Error(`Geocodificação retornou HTTP ${response.status}`);
+
+      const result = await response.json();
+      const address = result.address || {};
+      const city = address.city || address.town || address.village || address.municipality || address.county;
+      const state = address.state;
+      const municipality = city
+        ? [city, state].filter(Boolean).join(', ')
+        : null;
+      municipalityCache.set(cacheKey, municipality);
+      return municipality;
+    } catch (error) {
+      console.warn('Não foi possível identificar o município pelas coordenadas:', error);
+      return null;
+    } finally {
+      municipalityRequests.delete(cacheKey);
+    }
+  });
+
+  municipalityRequestQueue = request.then(() => undefined, () => undefined);
+  municipalityRequests.set(cacheKey, request);
+  return request;
+}
+
+function updateReportMunicipality(lat, lng) {
+  const sequence = ++reportGeocodeSequence;
+  const label = document.getElementById('reportLocationName');
+  if (!label) return;
+
+  if (reportGeocodeTimer) clearTimeout(reportGeocodeTimer);
+  label.textContent = 'Identificando município...';
+  reportGeocodeTimer = setTimeout(async () => {
+    const municipality = await identifyMunicipality(lat, lng);
+    if (sequence !== reportGeocodeSequence) return;
+    label.textContent = municipality
+      ? `${municipality} · Dados © OpenStreetMap`
+      : 'Município não identificado · Dados © OpenStreetMap';
+  }, 500);
+}
+
 async function populateDetail() {
   const id = localStorage.getItem('urbaneye_current_problem');
   const p = await UrbanAPI.getProblemById(id);
@@ -360,6 +426,13 @@ async function populateDetail() {
   document.getElementById('detailCat').textContent = p.cat;
   document.getElementById('detailStatus').textContent = p.status;
   document.getElementById('detailDesc').textContent = p.desc;
+  const municipality = p.municipality || await identifyMunicipality(p.lat, p.lng);
+  const detailLocation = document.getElementById('detailLoc');
+  if (detailLocation) {
+    detailLocation.textContent = municipality
+      ? `📍 ${municipality} · Dados © OpenStreetMap`
+      : `📍 ${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)} · Dados © OpenStreetMap`;
+  }
   const photoBox = document.getElementById('detailPhoto');
   if (photoBox) {
     if (p.photo) {
@@ -404,6 +477,7 @@ async function confirmProblemDetail() {
 function setReportLocation(lat, lng, shouldCenter = false) {
   const locInput = document.getElementById('reportLocation');
   if (locInput) locInput.value = `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+  updateReportMunicipality(lat, lng);
 
   if (reportMap) {
     if (!reportMarker) {
@@ -681,8 +755,11 @@ async function sendReport() {
 
     const colors = { 'Buraco na rua': '#e53935', 'Falta de iluminação': '#f5a623', 'Enchente': '#1769e0', 'Falta de segurança': '#22a06b', 'Outro': '#7a5af8' };
 
+    if (reportGeocodeTimer) clearTimeout(reportGeocodeTimer);
+    reportGeocodeTimer = null;
+    const municipality = await identifyMunicipality(lat, lng);
     await UrbanAPI.addProblem({
-      lat, lng, cat, status: 'Aberto', desc, photo: capturedPhoto, color: colors[cat] || '#1769e0'
+      lat, lng, municipality, cat, status: 'Aberto', desc, photo: capturedPhoto, color: colors[cat] || '#1769e0'
     });
 
     const message = isAuthenticated

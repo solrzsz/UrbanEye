@@ -30,6 +30,7 @@ function normalizeProblemRow(row) {
         color: row.color || '#1769e0',
         photo: row.photo_url || row.photo || null,
         bairro: row.bairro || row.neighborhood || null,
+        municipality: row.municipality || null,
         confirmation_count: Number(row.confirmation_count || 0)
     };
 }
@@ -43,6 +44,7 @@ function normalizeProblemPayload(problem) {
         lng: problem.lng,
         color: problem.color || '#1769e0',
         bairro: problem.bairro || null,
+        municipality: problem.municipality || null,
         photo_url: problem.photo || null
     };
 }
@@ -270,6 +272,7 @@ window.UrbanAPI = {
                 lng: problem.lng,
                 color: problem.color || '#1769e0',
                 bairro: problem.bairro || null,
+                municipality: problem.municipality || null,
                 photo_url: problem.photo || null,
                 created_at: new Date().toISOString(),
                 is_guest: true
