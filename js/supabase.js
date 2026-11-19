@@ -120,7 +120,7 @@
           bairro: bairro,
           color: color,
           photo_url: photo,
-          status: 'pendente',
+          status: 'Aberto',
           user_id: user.id
         }
       ])
