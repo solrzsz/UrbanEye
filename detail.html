@@ -51,10 +51,10 @@
 <div class="top"><button class="iconbtn" onclick="show('map')">‹</button><b>Detalhes do problema</b><button class="iconbtn" onclick="show('map')">⋮</button></div>
 <div class="content-grid">
   <div class="card"><div class="report-img" id="detailPhoto">Foto do problema</div><div class="between" style="margin-top:13px"><h2 id="detailCat" style="margin:0">Carregando...</h2><span id="detailStatus" class="status progress">-</span></div><p id="detailLoc" class="muted" style="font-size:14px;margin:8px 0">📍 Duque de Caxias</p><p id="detailDesc" style="font-size:15px">...</p>
-  <div class="small muted">Publicado via API • <span id="detailConfirmCount">37</span> confirmações</div></div>
+  <div class="small muted">Publicado via API • <span id="detailConfirmCount">0</span> confirmações</div></div>
   <div>
     <div class="card"><b>Andamento</b><div style="margin:14px 0" class="progressbar"><i style="width:55%"></i></div><div class="between small"><span>Relatado</span><span>Análise</span><span>Resolvido</span></div></div>
-    <div class="card"><b>Você também encontrou?</b><p class="small muted">Confirme o problema para ajudar a dar visibilidade.</p><button class="btn secondary" onclick="toast('Problema confirmado via API!')">✓ Confirmar problema</button></div>
+    <div class="card"><b>Você também encontrou?</b><p class="small muted">Confirme o problema para ajudar a dar visibilidade.</p><button id="detailConfirmButton" class="btn secondary" onclick="confirmProblemDetail()">✓ Confirmar problema</button></div>
   </div>
 </div>
 

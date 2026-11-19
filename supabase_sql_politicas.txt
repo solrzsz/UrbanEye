@@ -95,6 +95,69 @@ on public.reports
 for delete
 using (auth.uid() = user_id);
 
+-- 6.1) Contagem persistida de confirmações
+alter table public.reports
+  add column if not exists confirmation_count integer not null default 0;
+
+create table if not exists public.report_confirmations (
+  report_id bigint not null references public.reports(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz default now(),
+  primary key (report_id, user_id)
+);
+
+update public.reports r
+set confirmation_count = (
+  select count(*)
+  from public.report_confirmations rc
+  where rc.report_id = r.id
+);
+
+alter table public.report_confirmations enable row level security;
+
+drop policy if exists "Permitir leitura pública das confirmações" on public.report_confirmations;
+create policy "Permitir leitura pública das confirmações"
+on public.report_confirmations
+for select
+using (true);
+
+drop policy if exists "Permitir confirmação autenticada" on public.report_confirmations;
+create policy "Permitir confirmação autenticada"
+on public.report_confirmations
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "Permitir remover própria confirmação" on public.report_confirmations;
+create policy "Permitir remover própria confirmação"
+on public.report_confirmations
+for delete
+using (auth.uid() = user_id);
+
+create or replace function public.update_report_confirmation_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.reports
+    set confirmation_count = confirmation_count + 1
+    where id = new.report_id;
+  elsif tg_op = 'DELETE' then
+    update public.reports
+    set confirmation_count = greatest(confirmation_count - 1, 0)
+    where id = old.report_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists on_report_confirmation_change on public.report_confirmations;
+create trigger on_report_confirmation_change
+after insert or delete on public.report_confirmations
+for each row execute procedure public.update_report_confirmation_count();
+
 -- 7) Habilitar autenticação por email no Supabase
 -- Faça isso no painel do Supabase:
 -- Authentication > Providers > Email > Ativar
