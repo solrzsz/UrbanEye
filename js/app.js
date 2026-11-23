@@ -370,12 +370,58 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (document.getElementById('statsGrid')) renderStats();
   if (document.getElementById('detailCat')) populateDetail();
   if (document.getElementById('btnLogin')) initLoginPage();
+  if (document.getElementById('neighborhoodRanking')) renderNeighborhoodRanking();
 });
 
 
 async function loadHome() {
   const problems = await UrbanAPI.getProblems();
   document.getElementById('homeCount').textContent = problems.length;
+}
+
+async function renderNeighborhoodRanking() {
+  const ranking = document.getElementById('neighborhoodRanking');
+  if (!ranking) return;
+
+  try {
+    const problems = await UrbanAPI.getProblems();
+    const contributionsByNeighborhood = new Map();
+
+    problems.forEach(problem => {
+      const neighborhood = String(problem.bairro || '').trim();
+      if (!neighborhood) return;
+
+      const key = neighborhood.toLocaleLowerCase('pt-BR');
+      const current = contributionsByNeighborhood.get(key);
+      if (current) current.count += 1;
+      else contributionsByNeighborhood.set(key, { name: neighborhood, count: 1 });
+    });
+
+    const neighborhoods = [...contributionsByNeighborhood.values()]
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+      .slice(0, 10);
+
+    if (!neighborhoods.length) {
+      ranking.innerHTML = '<p class="muted">Ainda não há relatos com bairro informado.</p>';
+      return;
+    }
+
+    const maxCount = neighborhoods[0].count;
+    ranking.innerHTML = neighborhoods.map((neighborhood, index) => {
+      const percentage = Math.round((neighborhood.count / maxCount) * 100);
+      return `<div class="listitem">
+        <b style="width:20px">${index + 1}</b>
+        <div style="flex:1">
+          <b>${escapeHTML(neighborhood.name)}</b>
+          <div class="progressbar"><i style="width:${percentage}%"></i></div>
+        </div>
+        <strong>${neighborhood.count}</strong>
+      </div>`;
+    }).join('');
+  } catch (error) {
+    console.error('Erro ao carregar ranking de bairros:', error);
+    ranking.innerHTML = '<p class="muted">Não foi possível carregar o ranking. Tente novamente mais tarde.</p>';
+  }
 }
 
 async function initMapPage() {
