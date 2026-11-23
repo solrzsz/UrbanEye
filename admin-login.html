@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <link rel="stylesheet" href="css/style.css">
+  <title>UrbanEye | Acesso Institucional</title>
+  <script>
+    const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/auth-guard.js"></script>
+  <script defer src="js/data.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <main class="admin-auth-shell">
+    <section class="admin-auth-brand">
+      <div class="logo-container">
+        <img src="logo.png" class="app-logo" alt="UrbanEye">
+        <div class="logo">Urban<span>Eye</span></div>
+      </div>
+      <div>
+        <span class="admin-kicker">PORTAL INSTITUCIONAL</span>
+        <h1>Gestão urbana<br>com dados em tempo real.</h1>
+        <p>Acompanhe relatos, priorize atendimentos e mantenha a comunidade informada sobre o progresso das soluções.</p>
+      </div>
+    </section>
+    <section class="admin-auth-card">
+      <button class="iconbtn admin-back" type="button" onclick="window.location.href='login.html'">‹</button>
+      <div class="admin-auth-logo"><img src="logo.png" alt="UrbanEye"></div>
+      <span class="admin-kicker">PREFEITURA / ONG</span>
+      <h2>Entrar no painel</h2>
+      <p class="muted">Use uma conta autorizada pela organização.</p>
+      <div class="field"><label for="adminEmail">E-mail institucional</label><input id="adminEmail" type="email" autocomplete="username" placeholder="nome@org.gov.br"></div>
+      <div class="field"><label for="adminPassword">Senha</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+      <button class="btn" id="btnAdminLogin" type="button" onclick="adminLogin()">ENTRAR NO PAINEL</button>
+      <p class="small muted admin-security">Acesso protegido. Alterações ficam vinculadas à conta institucional.</p>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+</body>
+</html>

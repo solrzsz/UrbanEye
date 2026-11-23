@@ -7,7 +7,7 @@
     'index.html', 'map.html', 'detail.html', 'filters.html', 'ranking.html',
     'stats.html', 'integrations.html', 'help.html', 'profile.html',
     'settings.html', 'history.html', 'notifications.html', 'report.html',
-    'login.html', 'register.html'
+    'login.html', 'register.html', 'admin-login.html', 'admin-dashboard.html'
   ]);
   const REDIRECTABLE_PAGES = new Set([...KNOWN_PAGES].filter((page) => !GUEST_ONLY_PAGES.has(page)));
 
@@ -345,6 +345,11 @@
 
     // Deslogado sem ter escolhido o modo visitante: precisa entrar ou escolher visitante.
     if (!GUEST_ONLY_PAGES.has(PAGE)) {
+      if (PAGE === 'admin-login.html') return;
+      if (PAGE === 'admin-dashboard.html') {
+        navigate('admin-login.html');
+        return;
+      }
       navigate(loginUrl('login-required', currentPageTarget()));
     }
   }

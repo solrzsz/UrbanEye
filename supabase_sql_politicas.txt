@@ -8,9 +8,16 @@ create table if not exists public.profiles (
   full_name text,
   email text,
   avatar_url text,
+  role text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table public.profiles
+  add column if not exists role text;
+
+-- Exemplo: definir uma conta institucional
+-- update public.profiles set role = 'municipal' where id = 'UUID-DA-CONTA';
 
 alter table public.profiles enable row level security;
 
@@ -97,6 +104,33 @@ using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
 grant select, insert, update, delete on public.reports to authenticated;
+
+drop policy if exists "Painéis institucionais podem atualizar relatos" on public.reports;
+create policy "Painéis institucionais podem atualizar relatos"
+on public.reports
+for update
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and lower(trim(p.role)) in (
+        'admin', 'administrador', 'institutional', 'institucional',
+        'municipal', 'prefeitura', 'ong', 'operator', 'operacional', 'staff'
+      )
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and lower(trim(p.role)) in (
+        'admin', 'administrador', 'institutional', 'institucional',
+        'municipal', 'prefeitura', 'ong', 'operator', 'operacional', 'staff'
+      )
+  )
+);
 
 -- Padroniza os status usados pelo aplicativo e mantém novos relatos como reportados
 update public.reports
