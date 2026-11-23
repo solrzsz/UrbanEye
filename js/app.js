@@ -579,21 +579,49 @@ async function renderNeighborhoodRanking() {
   const ranking = document.getElementById('neighborhoodRanking');
   if (!ranking) return;
 
-  try {
-    const problems = await UrbanAPI.getProblems();
-    const contributionsByNeighborhood = new Map();
+  ranking.innerHTML = '<p class="muted">Carregando ranking...</p>';
 
-    problems.forEach(problem => {
-      const neighborhood = String(problem.bairro || '').trim();
+  try {
+    let reports = [];
+
+    const generalReports = await window.UrbanAPI.getProblems();
+    let rankingReports = (generalReports || []).filter(report =>
+      String(report.bairro || report.neighborhood || '').trim()
+    );
+
+    if (!rankingReports.length && window.UrbanAPI?.getNeighborhoodReports) {
+      try {
+        rankingReports = await window.UrbanAPI.getNeighborhoodReports();
+      } catch (error) {
+        console.warn('Consulta dedicada do ranking indisponível:', error);
+      }
+    }
+
+    const combined = new Map();
+    rankingReports.forEach(report => {
+      const neighborhood = String(report.bairro || report.neighborhood || '').trim();
       if (!neighborhood) return;
 
-      const key = neighborhood.toLocaleLowerCase('pt-BR');
-      const current = contributionsByNeighborhood.get(key);
-      if (current) current.count += 1;
-      else contributionsByNeighborhood.set(key, { name: neighborhood, count: 1 });
+      const key = neighborhood
+        .toLocaleLowerCase('pt-BR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
+
+      if (!combined.has(key)) {
+        combined.set(key, { name: neighborhood, problems: new Set() });
+      }
+
+      const problemId = report.id != null
+        ? String(report.id)
+        : `${Number(report.lat).toFixed(5)},${Number(report.lng).toFixed(5)}`;
+      combined.get(key).problems.add(problemId);
     });
 
-    const neighborhoods = [...contributionsByNeighborhood.values()]
+    const neighborhoods = [...combined.values()].map(neighborhood => ({
+      name: neighborhood.name,
+      count: neighborhood.problems.size
+    }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
       .slice(0, 10);
 
@@ -611,7 +639,7 @@ async function renderNeighborhoodRanking() {
           <b>${escapeHTML(neighborhood.name)}</b>
           <div class="progressbar"><i style="width:${percentage}%"></i></div>
         </div>
-        <strong>${neighborhood.count}</strong>
+        <strong title="${neighborhood.count} problema${neighborhood.count === 1 ? '' : 's'} reportado${neighborhood.count === 1 ? '' : 's'}">${neighborhood.count} <span class="small muted">problema${neighborhood.count === 1 ? '' : 's'}</span></strong>
       </div>`;
     }).join('');
   } catch (error) {
