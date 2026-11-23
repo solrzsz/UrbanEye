@@ -491,7 +491,7 @@ function openProblem(id) {
   show('detail');
 }
 
-async function identifyMunicipality(lat, lng) {
+async function identifyLocation(lat, lng) {
   const cacheKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
   if (municipalityCache.has(cacheKey)) return municipalityCache.get(cacheKey);
   if (municipalityRequests.has(cacheKey)) return municipalityRequests.get(cacheKey);
@@ -506,7 +506,7 @@ async function identifyMunicipality(lat, lng) {
         format: 'jsonv2',
         lat: String(lat),
         lon: String(lng),
-        zoom: '10',
+        zoom: '18',
         addressdetails: '1',
         'accept-language': 'pt-BR'
       });
@@ -517,14 +517,21 @@ async function identifyMunicipality(lat, lng) {
       const address = result.address || {};
       const city = address.city || address.town || address.village || address.municipality || address.county;
       const state = address.state;
-      const municipality = city
-        ? [city, state].filter(Boolean).join(', ')
-        : null;
-      municipalityCache.set(cacheKey, municipality);
-      return municipality;
+      const bairro = address.neighbourhood || address.suburb || address.quarter || address.residential || address.city_district || null;
+      const municipality = city ? [city, state].filter(Boolean).join(', ') : null;
+      const location = {
+        bairro,
+        municipality,
+        label: [bairro, municipality].filter(Boolean).join(' · ') || null
+      };
+
+      municipalityCache.set(cacheKey, location);
+      return location;
     } catch (error) {
-      console.warn('Não foi possível identificar o município pelas coordenadas:', error);
-      return null;
+      console.warn('Não foi possível identificar bairro e município pelas coordenadas:', error);
+      const fallback = { bairro: null, municipality: null, label: null };
+      municipalityCache.set(cacheKey, fallback);
+      return fallback;
     } finally {
       municipalityRequests.delete(cacheKey);
     }
@@ -535,19 +542,24 @@ async function identifyMunicipality(lat, lng) {
   return request;
 }
 
+async function identifyMunicipality(lat, lng) {
+  const location = await identifyLocation(lat, lng);
+  return location.municipality;
+}
+
 function updateReportMunicipality(lat, lng) {
   const sequence = ++reportGeocodeSequence;
   const label = document.getElementById('reportLocationName');
   if (!label) return;
 
   if (reportGeocodeTimer) clearTimeout(reportGeocodeTimer);
-  label.textContent = 'Identificando município...';
+  label.textContent = 'Identificando bairro e município...';
   reportGeocodeTimer = setTimeout(async () => {
-    const municipality = await identifyMunicipality(lat, lng);
+    const location = await identifyLocation(lat, lng);
     if (sequence !== reportGeocodeSequence) return;
-    label.textContent = municipality
-      ? `${municipality} · Dados © OpenStreetMap`
-      : 'Município não identificado · Dados © OpenStreetMap';
+    label.textContent = location.label
+      ? `${location.label} · Dados © OpenStreetMap`
+      : 'Bairro e município não identificados · Dados © OpenStreetMap';
   }, 500);
 }
 
@@ -602,11 +614,14 @@ async function populateDetail() {
   const statusSelect = document.getElementById('detailStatusSelect');
   if (statusSelect) statusSelect.value = p.status;
   document.getElementById('detailDesc').textContent = p.desc;
-  const municipality = p.municipality || await identifyMunicipality(p.lat, p.lng);
+  const locationInfo = await identifyLocation(p.lat, p.lng);
+  const municipality = p.municipality || locationInfo.municipality;
+  const bairro = p.bairro || locationInfo.bairro;
   const detailLocation = document.getElementById('detailLoc');
   if (detailLocation) {
-    detailLocation.textContent = municipality
-      ? `📍 ${municipality} · Dados © OpenStreetMap`
+    const locationLabel = [bairro, municipality].filter(Boolean).join(' · ');
+    detailLocation.textContent = locationLabel
+      ? `📍 ${locationLabel} · Dados © OpenStreetMap`
       : `📍 ${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)} · Dados © OpenStreetMap`;
   }
   const coordinates = document.getElementById('detailCoordinates');
@@ -1042,9 +1057,17 @@ async function sendReport() {
 
     if (reportGeocodeTimer) clearTimeout(reportGeocodeTimer);
     reportGeocodeTimer = null;
-    const municipality = await identifyMunicipality(lat, lng);
+    const locationInfo = await identifyLocation(lat, lng);
     await UrbanAPI.addProblem({
-      lat, lng, municipality, cat, status: 'Aberto', desc, photo: capturedPhoto, color: colors[cat] || '#1769e0'
+      lat,
+      lng,
+      municipality: locationInfo.municipality,
+      bairro: locationInfo.bairro,
+      cat,
+      status: 'Aberto',
+      desc,
+      photo: capturedPhoto,
+      color: colors[cat] || '#1769e0'
     });
 
     const message = isAuthenticated
