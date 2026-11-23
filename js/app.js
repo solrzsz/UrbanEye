@@ -340,6 +340,10 @@ async function saveProfile() {
     }
     if (photoInput) photoInput.value = '';
     await renderProfileHeader();
+    const editor = document.getElementById('profileEditor');
+    const editButton = document.getElementById('editProfileButton');
+    if (editor) editor.hidden = true;
+    if (editButton) editButton.hidden = false;
     toast('Perfil atualizado com sucesso!');
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
@@ -1301,4 +1305,26 @@ function filterChip(el) {
   }
 
   toast(`Filtro "${el.textContent.trim()}" aplicado na view.`);
+}
+
+function openProfileEditor() {
+  const editor = document.getElementById('profileEditor');
+  const button = document.getElementById('editProfileButton');
+  if (editor) editor.hidden = false;
+  if (button) button.hidden = true;
+  document.getElementById('profileNameInput')?.focus();
+}
+
+async function closeProfileEditor() {
+  const editor = document.getElementById('profileEditor');
+  const button = document.getElementById('editProfileButton');
+  const photoInput = document.getElementById('profileAvatarInput');
+  if (editor) editor.hidden = true;
+  if (button) button.hidden = false;
+  if (photoInput) photoInput.value = '';
+  if (profileAvatarPreviewUrl) {
+    URL.revokeObjectURL(profileAvatarPreviewUrl);
+    profileAvatarPreviewUrl = null;
+  }
+  await renderProfileHeader();
 }

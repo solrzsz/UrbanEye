@@ -64,7 +64,8 @@
                 <div id="profileMemberSince" class="muted small">Acesse sua conta para personalizar</div>
               </div>
             </div>
-            <div class="profile-editor" data-auth-only hidden>
+            <button id="editProfileButton" type="button" class="btn secondary" data-auth-only hidden style="margin-top:14px" onclick="openProfileEditor()">Editar perfil</button>
+            <div id="profileEditor" class="profile-editor" hidden>
               <div class="field">
                 <label for="profileNameInput">Nome</label>
                 <input id="profileNameInput" type="text" maxlength="80" autocomplete="name" placeholder="Seu nome">
@@ -74,7 +75,10 @@
                 <input id="profileAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" onchange="previewProfileAvatar(this)">
                 <div class="small muted">JPG, PNG ou WebP · até 5 MB</div>
               </div>
-              <button id="saveProfileButton" type="button" class="btn secondary" onclick="saveProfile()">Salvar perfil</button>
+              <div class="between">
+                <button id="saveProfileButton" type="button" class="btn secondary" onclick="saveProfile()">Salvar perfil</button>
+                <button type="button" class="btn secondary" onclick="closeProfileEditor()">Cancelar</button>
+              </div>
             </div>
             <div class="auth-notice" data-guest-only style="margin-top:14px">
               <span>Você está vendo dados de demonstração. Relatos publicados no modo visitante ficam apenas neste navegador.</span>
