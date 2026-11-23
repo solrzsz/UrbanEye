@@ -384,25 +384,32 @@ async function renderNeighborhoodRanking() {
   if (!ranking) return;
 
   try {
-    const problems = await UrbanAPI.getProblems();
+    const reports = await UrbanAPI.getNeighborhoodReports();
     const contributionsByNeighborhood = new Map();
 
-    problems.forEach(problem => {
-      const neighborhood = String(problem.bairro || '').trim();
-      if (!neighborhood) return;
+    for (const report of reports) {
+      let neighborhood = String(report.bairro || '').trim();
+      if (!neighborhood && Number.isFinite(Number(report.lat)) && Number.isFinite(Number(report.lng))) {
+        const location = await identifyLocation(Number(report.lat), Number(report.lng));
+        neighborhood = String(location.bairro || '').trim();
+      }
+      if (!neighborhood) continue;
 
-      const key = neighborhood.toLocaleLowerCase('pt-BR');
+      const key = neighborhood
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('pt-BR');
       const current = contributionsByNeighborhood.get(key);
       if (current) current.count += 1;
       else contributionsByNeighborhood.set(key, { name: neighborhood, count: 1 });
-    });
+    }
 
     const neighborhoods = [...contributionsByNeighborhood.values()]
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
       .slice(0, 10);
 
     if (!neighborhoods.length) {
-      ranking.innerHTML = '<p class="muted">Ainda não há relatos com bairro informado.</p>';
+      ranking.innerHTML = '<p class="muted">Não foi possível identificar bairros nos registros disponíveis.</p>';
       return;
     }
 
