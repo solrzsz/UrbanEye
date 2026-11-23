@@ -547,8 +547,32 @@ async function saveProfile() {
   }
 }
 
+function addInstitutionalAccessLinks() {
+  const desktopLinks = document.querySelector('.desktop-links');
+  if (desktopLinks && !desktopLinks.querySelector('.institutional-link')) {
+    const link = document.createElement('a');
+    link.className = 'institutional-link';
+    link.href = 'admin-login.html';
+    link.textContent = 'Área institucional';
+    desktopLinks.insertBefore(link, desktopLinks.querySelector('.btn-report'));
+  }
+
+  const top = document.querySelector('.top');
+  if (top && !document.querySelector('.top-institutional-link')) {
+    const accessRow = document.createElement('div');
+    accessRow.className = 'institutional-access-mobile';
+    const link = document.createElement('a');
+    link.className = 'institutional-link top-institutional-link';
+    link.href = 'admin-login.html';
+    link.textContent = 'Área institucional';
+    accessRow.appendChild(link);
+    top.insertAdjacentElement('afterend', accessRow);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
+  addInstitutionalAccessLinks();
 
   if (window.UrbanAuth) {
     await window.UrbanAuth.ready;

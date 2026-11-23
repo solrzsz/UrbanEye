@@ -65,10 +65,18 @@
 
         <div class="field"><label>E-mail</label><input id="email" type="email" placeholder="seu@email.com"></div>
         <div class="field"><label>Senha</label><input id="password" type="password" placeholder="••••••••"></div>
-        <button class="btn" onclick="login()" id="btnLogin">ENTRAR</button>
-        <button class="btn secondary" style="margin-top:10px" onclick="show('register')">Criar conta</button>
-        <button class="btn ghost" style="margin-top:10px" onclick="enterGuestMode()">Continuar como visitante</button>
-        <button class="btn ghost institutional-login-button" style="margin-top:10px" type="button" onclick="window.location.href='admin-login.html'">Entrar como Prefeitura ou ONG</button>
+        <button class="auth-action auth-primary" onclick="login()" id="btnLogin">
+          <span>Entrar</span><b aria-hidden="true">→</b>
+        </button>
+        <button class="auth-action auth-secondary" onclick="show('register')">
+          <span>Criar conta</span><b aria-hidden="true">+</b>
+        </button>
+        <button class="auth-action auth-institutional" type="button" onclick="window.location.href='admin-login.html'">
+          <span>Entrar como Prefeitura ou ONG</span><b aria-hidden="true">→</b>
+        </button>
+        <button class="auth-action auth-guest" onclick="enterGuestMode()">
+          <span>Continuar como visitante</span>
+        </button>
         <p class="small muted" style="text-align:center;margin:12px 0 0">No modo visitante, seus relatos ficam salvos apenas neste navegador.</p>
       </div>
 

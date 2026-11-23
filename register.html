@@ -61,7 +61,12 @@
         <div class="field"><label>E-mail</label><input id="registerEmail" type="email" placeholder="seu@email.com"></div>
         <div class="field"><label>Telefone</label><input placeholder="(00) 00000-0000"></div>
         <div class="field"><label>Senha</label><input id="registerPassword" type="password" placeholder="Crie uma senha"></div>
-        <button class="btn" onclick="signup()" id="btnRegister">CRIAR CONTA</button>
+        <button class="auth-action auth-primary" onclick="signup()" id="btnRegister">
+          <span>Criar conta</span><b aria-hidden="true">+</b>
+        </button>
+        <button class="auth-action auth-secondary" type="button" onclick="show('login')">
+          <span>Já tenho uma conta</span><b aria-hidden="true">→</b>
+        </button>
       </div>
 
     </section>

@@ -1064,12 +1064,120 @@ html.auth-checking body {
   font-weight: 800;
 }
 
+.auth-action {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: 13px;
+  border: 1px solid transparent;
+  font-weight: 800;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.auth-action b {
+  flex: 0 0 auto;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.auth-action:hover {
+  transform: translateY(-1px);
+}
+
+.auth-action:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.auth-action:hover b {
+  transform: translateX(2px);
+}
+
+.auth-primary {
+  min-height: 54px;
+  background: linear-gradient(135deg, var(--primary), var(--primary2));
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(23, 105, 224, 0.20);
+}
+
+.auth-primary:hover {
+  box-shadow: 0 15px 28px rgba(23, 105, 224, 0.28);
+}
+
+.auth-secondary,
+.auth-institutional {
+  background: var(--card);
+  color: var(--primary);
+  border-color: rgba(23, 105, 224, 0.28);
+}
+
+.auth-secondary:hover,
+.auth-institutional:hover {
+  background: rgba(23, 105, 224, 0.06);
+  border-color: var(--primary);
+}
+
+.auth-guest {
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.auth-guest:hover {
+  background: var(--card);
+  border-color: var(--muted);
+}
+
+.auth-institutional {
+  margin-top: 14px;
+  background:
+    linear-gradient(135deg, rgba(23, 105, 224, 0.07), rgba(23, 105, 224, 0.02)),
+    var(--card);
+}
+
 .desktop-links .institutional-link {
+  display: inline-flex;
+  align-items: center;
   padding: 8px 10px;
   color: var(--primary);
   border: 1px solid rgba(23, 105, 224, 0.24);
   border-radius: 8px;
   background: rgba(23, 105, 224, 0.06);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.institutional-access-mobile {
+  display: none;
+}
+
+.institutional-access-mobile .institutional-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid rgba(23, 105, 224, 0.24);
+  border-radius: 10px;
+  background: rgba(23, 105, 224, 0.07);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 767px) {
+  .institutional-access-mobile {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 20px 6px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1312,16 +1420,16 @@ body:has(.admin-auth-shell) {
 }
 
 .admin-auth-shell {
-  width: min(1040px, calc(100% - 40px));
-  min-height: min(720px, calc(100vh - 64px));
+  width: min(1080px, calc(100% - 40px));
+  min-height: min(700px, calc(100vh - 64px));
   margin: 32px auto;
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  grid-template-columns: minmax(0, 1.18fr) minmax(390px, 0.82fr);
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 24px;
+  border-radius: 28px;
   background: var(--card);
-  box-shadow: 0 24px 70px rgba(23, 32, 51, 0.12);
+  box-shadow: 0 28px 80px rgba(23, 32, 51, 0.16);
 }
 
 .admin-auth-brand {
@@ -1330,9 +1438,25 @@ body:has(.admin-auth-shell) {
   justify-content: space-between;
   padding: clamp(32px, 6vw, 64px);
   color: #fff;
+  position: relative;
+  isolation: isolate;
   background:
-    linear-gradient(135deg, rgba(23, 105, 224, 0.96), rgba(13, 71, 161, 0.92)),
+    radial-gradient(circle at 85% 18%, rgba(255, 255, 255, 0.16), transparent 22%),
+    radial-gradient(circle at 12% 84%, rgba(76, 154, 255, 0.34), transparent 30%),
+    linear-gradient(145deg, #1769e0 0%, #1557b8 58%, #0b3d86 100%);
     var(--primary2);
+}
+
+.admin-auth-brand::after {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -115px;
+  bottom: -145px;
+  border: 38px solid rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+  z-index: -1;
 }
 
 .admin-auth-brand .logo {
@@ -1360,20 +1484,68 @@ body:has(.admin-auth-shell) {
   color: rgba(255, 255, 255, 0.72);
 }
 
+.admin-brand-content {
+  max-width: 560px;
+}
+
+.admin-brand-highlights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.admin-brand-highlights div {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(8px);
+}
+
+.admin-brand-highlights b,
+.admin-brand-highlights span {
+  display: block;
+}
+
+.admin-brand-highlights b {
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.admin-brand-highlights span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+}
+
+.admin-brand-footer {
+  margin: 28px 0 0 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.04em;
+}
+
 .admin-auth-card {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(28px, 5vw, 52px);
+  padding: clamp(34px, 5vw, 58px);
+  background:
+    linear-gradient(180deg, rgba(23, 105, 224, 0.025), transparent 170px),
+    var(--card);
 }
 
-.admin-auth-card h2 {
+.admin-auth-heading {
+  margin-bottom: 24px;
+}
+
+.admin-auth-heading h2 {
   margin: 8px 0 4px;
-  font-size: 30px;
+  font-size: clamp(28px, 3vw, 36px);
+  line-height: 1.1;
 }
 
-.admin-auth-card > .muted {
+.admin-auth-heading > .muted {
   margin: 0 0 16px;
 }
 
@@ -1393,15 +1565,101 @@ body:has(.admin-auth-shell) {
 
 .admin-back {
   position: absolute;
-  top: 18px;
-  left: 18px;
-  width: 38px;
-  height: 38px;
+  top: 20px;
+  left: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+}
+
+.admin-auth-form {
+  width: 100%;
+}
+
+.admin-field {
+  margin: 0 0 16px;
+}
+
+.admin-field label {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.admin-input-wrap {
+  position: relative;
+}
+
+.admin-input-wrap > span {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.admin-input-wrap input {
+  height: 52px;
+  padding: 0 14px 0 42px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--input-bg);
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.admin-input-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(23, 105, 224, 0.10);
+  background: var(--card);
+}
+
+.admin-login-button {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding: 0 18px 0 20px;
+  border-radius: 13px;
+  box-shadow: 0 12px 26px rgba(23, 105, 224, 0.24);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.admin-login-button b {
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.admin-login-button:hover b {
+  transform: translateX(3px);
 }
 
 .admin-security {
-  margin: 14px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 11px;
   text-align: center;
+}
+
+.admin-security span {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(34, 160, 107, 0.12);
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 @media (max-width: 820px) {
@@ -1492,6 +1750,7 @@ body:has(.admin-auth-shell) {
     min-height: calc(100vh - 24px);
     margin: 12px;
     border-radius: 18px;
+    box-shadow: 0 18px 50px rgba(23, 32, 51, 0.12);
   }
 
   .admin-auth-brand {
@@ -1500,9 +1759,31 @@ body:has(.admin-auth-shell) {
 
   .admin-auth-card {
     min-height: calc(100vh - 50px);
+    justify-content: flex-start;
+    padding: 92px 24px 30px;
   }
 
   .admin-auth-logo {
     display: block;
+    width: 62px;
+    height: 62px;
+    margin: 0 0 20px;
+  }
+
+  .admin-auth-heading {
+    margin-bottom: 22px;
+  }
+
+  .admin-auth-heading h2 {
+    font-size: 30px;
+  }
+
+  .admin-back {
+    top: 16px;
+    left: 16px;
+  }
+
+  .admin-security {
+    margin-top: 20px;
   }
 }

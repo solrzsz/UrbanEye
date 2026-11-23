@@ -26,22 +26,48 @@
         <img src="logo.png" class="app-logo" alt="UrbanEye">
         <div class="logo">Urban<span>Eye</span></div>
       </div>
-      <div>
+      <div class="admin-brand-content">
         <span class="admin-kicker">PORTAL INSTITUCIONAL</span>
         <h1>Gestão urbana<br>com dados em tempo real.</h1>
         <p>Acompanhe relatos, priorize atendimentos e mantenha a comunidade informada sobre o progresso das soluções.</p>
+        <div class="admin-brand-highlights">
+          <div><b>Centralizado</b><span>Relatos em um só lugar</span></div>
+          <div><b>Em tempo real</b><span>Informações atualizadas</span></div>
+        </div>
       </div>
+      <p class="admin-brand-footer">UrbanEye · Gestão pública responsável</p>
     </section>
     <section class="admin-auth-card">
       <button class="iconbtn admin-back" type="button" onclick="window.location.href='login.html'">‹</button>
       <div class="admin-auth-logo"><img src="logo.png" alt="UrbanEye"></div>
-      <span class="admin-kicker">PREFEITURA / ONG</span>
-      <h2>Entrar no painel</h2>
-      <p class="muted">Use uma conta autorizada pela organização.</p>
-      <div class="field"><label for="adminEmail">E-mail institucional</label><input id="adminEmail" type="email" autocomplete="username" placeholder="nome@org.gov.br"></div>
-      <div class="field"><label for="adminPassword">Senha</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="••••••••"></div>
-      <button class="btn" id="btnAdminLogin" type="button" onclick="adminLogin()">ENTRAR NO PAINEL</button>
-      <p class="small muted admin-security">Acesso protegido. Alterações ficam vinculadas à conta institucional.</p>
+      <div class="admin-auth-heading">
+        <span class="admin-kicker">PREFEITURA / ONG</span>
+        <h2>Bem-vindo de volta</h2>
+        <p class="muted">Acesse o painel da sua organização.</p>
+      </div>
+      <form class="admin-auth-form" onsubmit="event.preventDefault(); adminLogin();">
+        <div class="field admin-field">
+          <label for="adminEmail">E-mail institucional</label>
+          <div class="admin-input-wrap">
+            <span aria-hidden="true">@</span>
+            <input id="adminEmail" type="email" autocomplete="username" placeholder="nome@org.gov.br" required>
+          </div>
+        </div>
+        <div class="field admin-field">
+          <label for="adminPassword">Senha</label>
+          <div class="admin-input-wrap">
+            <span aria-hidden="true">●</span>
+            <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Digite sua senha" required>
+          </div>
+        </div>
+        <button class="btn admin-login-button" id="btnAdminLogin" type="submit">
+          <span>Entrar no painel</span><b aria-hidden="true">→</b>
+        </button>
+      </form>
+      <div class="admin-security">
+        <span aria-hidden="true">✓</span>
+        Acesso protegido e vinculado à conta institucional
+      </div>
     </section>
   </main>
   <div id="toast" class="toast"></div>
