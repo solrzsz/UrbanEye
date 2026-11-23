@@ -603,21 +603,49 @@ async function renderNeighborhoodRanking() {
   const ranking = document.getElementById('neighborhoodRanking');
   if (!ranking) return;
 
-  try {
-    const problems = await UrbanAPI.getProblems();
-    const contributionsByNeighborhood = new Map();
+  ranking.innerHTML = '<p class="muted">Carregando ranking...</p>';
 
-    problems.forEach(problem => {
-      const neighborhood = String(problem.bairro || '').trim();
+  try {
+    let reports = [];
+
+    const generalReports = await window.UrbanAPI.getProblems();
+    let rankingReports = (generalReports || []).filter(report =>
+      String(report.bairro || report.neighborhood || '').trim()
+    );
+
+    if (!rankingReports.length && window.UrbanAPI?.getNeighborhoodReports) {
+      try {
+        rankingReports = await window.UrbanAPI.getNeighborhoodReports();
+      } catch (error) {
+        console.warn('Consulta dedicada do ranking indisponível:', error);
+      }
+    }
+
+    const combined = new Map();
+    rankingReports.forEach(report => {
+      const neighborhood = String(report.bairro || report.neighborhood || '').trim();
       if (!neighborhood) return;
 
-      const key = neighborhood.toLocaleLowerCase('pt-BR');
-      const current = contributionsByNeighborhood.get(key);
-      if (current) current.count += 1;
-      else contributionsByNeighborhood.set(key, { name: neighborhood, count: 1 });
+      const key = neighborhood
+        .toLocaleLowerCase('pt-BR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
+
+      if (!combined.has(key)) {
+        combined.set(key, { name: neighborhood, problems: new Set() });
+      }
+
+      const problemId = report.id != null
+        ? String(report.id)
+        : `${Number(report.lat).toFixed(5)},${Number(report.lng).toFixed(5)}`;
+      combined.get(key).problems.add(problemId);
     });
 
-    const neighborhoods = [...contributionsByNeighborhood.values()]
+    const neighborhoods = [...combined.values()].map(neighborhood => ({
+      name: neighborhood.name,
+      count: neighborhood.problems.size
+    }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
       .slice(0, 10);
 
@@ -635,7 +663,7 @@ async function renderNeighborhoodRanking() {
           <b>${escapeHTML(neighborhood.name)}</b>
           <div class="progressbar"><i style="width:${percentage}%"></i></div>
         </div>
-        <strong>${neighborhood.count}</strong>
+        <strong title="${neighborhood.count} problema${neighborhood.count === 1 ? '' : 's'} reportado${neighborhood.count === 1 ? '' : 's'}">${neighborhood.count} <span class="small muted">problema${neighborhood.count === 1 ? '' : 's'}</span></strong>
       </div>`;
     }).join('');
   } catch (error) {
@@ -743,9 +771,14 @@ function openProblem(id) {
   show('detail');
 }
 
-async function identifyMunicipality(lat, lng) {
+async function identifyLocation(lat, lng) {
   const cacheKey = `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
-  if (municipalityCache.has(cacheKey)) return municipalityCache.get(cacheKey);
+  if (municipalityCache.has(cacheKey)) {
+    const cached = municipalityCache.get(cacheKey);
+    return typeof cached === 'object'
+      ? cached
+      : { bairro: null, municipality: cached || null, label: cached || null };
+  }
   if (municipalityRequests.has(cacheKey)) return municipalityRequests.get(cacheKey);
 
   const request = municipalityRequestQueue.then(async () => {
@@ -758,7 +791,7 @@ async function identifyMunicipality(lat, lng) {
         format: 'jsonv2',
         lat: String(lat),
         lon: String(lng),
-        zoom: '10',
+        zoom: '18',
         addressdetails: '1',
         'accept-language': 'pt-BR'
       });
@@ -769,14 +802,21 @@ async function identifyMunicipality(lat, lng) {
       const address = result.address || {};
       const city = address.city || address.town || address.village || address.municipality || address.county;
       const state = address.state;
-      const municipality = city
-        ? [city, state].filter(Boolean).join(', ')
-        : null;
-      municipalityCache.set(cacheKey, municipality);
-      return municipality;
+      const bairro = address.neighbourhood || address.suburb || address.quarter || address.residential || address.city_district || null;
+      const municipality = city ? [city, state].filter(Boolean).join(', ') : null;
+      const location = {
+        bairro,
+        municipality,
+        label: [bairro, municipality].filter(Boolean).join(' · ') || null
+      };
+
+      municipalityCache.set(cacheKey, location);
+      return location;
     } catch (error) {
-      console.warn('Não foi possível identificar o município pelas coordenadas:', error);
-      return null;
+      console.warn('Não foi possível identificar bairro e município pelas coordenadas:', error);
+      const fallback = { bairro: null, municipality: null, label: null };
+      municipalityCache.set(cacheKey, fallback);
+      return fallback;
     } finally {
       municipalityRequests.delete(cacheKey);
     }
@@ -787,19 +827,24 @@ async function identifyMunicipality(lat, lng) {
   return request;
 }
 
+async function identifyMunicipality(lat, lng) {
+  const location = await identifyLocation(lat, lng);
+  return location.municipality;
+}
+
 function updateReportMunicipality(lat, lng) {
   const sequence = ++reportGeocodeSequence;
   const label = document.getElementById('reportLocationName');
   if (!label) return;
 
   if (reportGeocodeTimer) clearTimeout(reportGeocodeTimer);
-  label.textContent = 'Identificando município...';
+  label.textContent = 'Identificando bairro e município...';
   reportGeocodeTimer = setTimeout(async () => {
-    const municipality = await identifyMunicipality(lat, lng);
+    const location = await identifyLocation(lat, lng);
     if (sequence !== reportGeocodeSequence) return;
-    label.textContent = municipality
-      ? `${municipality} · Dados © OpenStreetMap`
-      : 'Município não identificado · Dados © OpenStreetMap';
+    label.textContent = location.label
+      ? `${location.label} · Dados © OpenStreetMap`
+      : 'Bairro e município não identificados · Dados © OpenStreetMap';
   }, 500);
 }
 
@@ -854,11 +899,14 @@ async function populateDetail() {
   const statusSelect = document.getElementById('detailStatusSelect');
   if (statusSelect) statusSelect.value = p.status;
   document.getElementById('detailDesc').textContent = p.desc;
-  const municipality = p.municipality || await identifyMunicipality(p.lat, p.lng);
+  const locationInfo = await identifyLocation(p.lat, p.lng);
+  const municipality = p.municipality || locationInfo.municipality;
+  const bairro = p.bairro || locationInfo.bairro;
   const detailLocation = document.getElementById('detailLoc');
   if (detailLocation) {
-    detailLocation.textContent = municipality
-      ? `📍 ${municipality} · Dados © OpenStreetMap`
+    const locationLabel = [bairro, municipality].filter(Boolean).join(' · ');
+    detailLocation.textContent = locationLabel
+      ? `📍 ${locationLabel} · Dados © OpenStreetMap`
       : `📍 ${Number(p.lat).toFixed(5)}, ${Number(p.lng).toFixed(5)} · Dados © OpenStreetMap`;
   }
   const coordinates = document.getElementById('detailCoordinates');
@@ -1296,7 +1344,15 @@ async function sendReport() {
     reportGeocodeTimer = null;
     const municipality = await identifyMunicipality(lat, lng);
     await UrbanAPI.addProblem({
-      lat, lng, municipality, cat, status: 'Aberto', desc, photo: capturedPhoto, color: colors[cat] || '#1769e0'
+      lat,
+      lng,
+      municipality: locationInfo.municipality,
+      bairro: locationInfo.bairro,
+      cat,
+      status: 'Aberto',
+      desc,
+      photo: capturedPhoto,
+      color: colors[cat] || '#1769e0'
     });
 
     const message = isAuthenticated
