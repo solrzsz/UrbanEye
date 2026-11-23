@@ -247,6 +247,197 @@ function hasSupabaseAuth() {
   return !!(window.supabaseClient && window.supabaseClient.auth && window.urbaneyeSupabaseEnabled);
 }
 
+async function adminLogin() {
+  const emailInput = document.getElementById('adminEmail');
+  const passwordInput = document.getElementById('adminPassword');
+  const button = document.getElementById('btnAdminLogin');
+  const email = emailInput?.value.trim() || '';
+  const password = passwordInput?.value || '';
+
+  if (!email || !password) {
+    toast('Preencha o e-mail e a senha institucionais.');
+    return;
+  }
+  if (!hasSupabaseAuth()) {
+    toast('Supabase não configurado. Configure o projeto antes do acesso institucional.');
+    return;
+  }
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Autenticando...';
+  }
+
+  try {
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    if (!data?.session) throw new Error('Não foi possível iniciar a sessão institucional.');
+
+    if (window.UrbanAuth) window.UrbanAuth.completeAuthentication(data.session);
+    window.location.href = 'admin-dashboard.html';
+  } catch (error) {
+    console.error('Erro no login institucional:', error);
+    toast(error?.message || 'Não foi possível entrar no painel.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'ENTRAR NO PAINEL';
+    }
+  }
+}
+
+function isInstitutionalProfile(profile) {
+  if (!profile) return false;
+  const role = String(profile.role || profile.account_type || profile.organization_role || '').trim().toLowerCase();
+  if (!role) return false;
+  return ['admin', 'administrador', 'institutional', 'institucional', 'municipal', 'prefeitura', 'ong', 'operator', 'operacional', 'staff'].includes(role);
+}
+
+let adminReports = [];
+
+async function initAdminDashboard() {
+  if (!window.UrbanAuth?.isAuthenticated()) {
+    window.location.replace('admin-login.html');
+    return;
+  }
+
+  const nameElement = document.querySelector('[data-admin-name]');
+  const displayName = window.UrbanAuth.getDisplayName();
+  if (nameElement) nameElement.textContent = displayName;
+
+  const denied = document.getElementById('adminAccessDenied');
+  const content = document.getElementById('adminDashboardContent');
+
+  try {
+    if (hasSupabaseAuth()) {
+      const user = window.UrbanAuth.getUser();
+      if (user?.id) {
+        const { data: profile, error } = await window.supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (error) throw error;
+        const roleDecision = isInstitutionalProfile(profile);
+        if (roleDecision === false) {
+          if (denied) denied.hidden = false;
+          if (content) content.hidden = true;
+          return;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Não foi possível validar o perfil institucional:', error);
+  }
+
+  if (denied) denied.hidden = true;
+  if (content) content.hidden = false;
+  await loadAdminReports();
+
+  document.getElementById('adminSearch')?.addEventListener('input', renderAdminReports);
+  document.getElementById('adminStatusFilter')?.addEventListener('change', renderAdminReports);
+}
+
+async function loadAdminReports() {
+  const list = document.getElementById('adminReportsList');
+  if (list) list.innerHTML = '<p class="admin-empty">Carregando relatos...</p>';
+
+  try {
+    const reports = await UrbanAPI.getProblems();
+    adminReports = (reports || []).map((report) => ({
+      ...report,
+      cat: report.cat || report.category || 'Outro',
+      desc: report.desc || report.description || 'Sem descrição',
+      status: window.normalizeProblemStatus ? normalizeProblemStatus(report.status) : report.status,
+      bairro: report.bairro || report.neighborhood || 'Local não informado'
+    }));
+    renderAdminReports();
+  } catch (error) {
+    console.error('Erro ao carregar painel administrativo:', error);
+    if (list) list.innerHTML = '<p class="admin-empty">Não foi possível carregar os relatos.</p>';
+  }
+}
+
+function renderAdminReports() {
+  const list = document.getElementById('adminReportsList');
+  if (!list) return;
+
+  const search = String(document.getElementById('adminSearch')?.value || '').trim().toLowerCase();
+  const statusFilter = document.getElementById('adminStatusFilter')?.value || 'Todos';
+  const filtered = adminReports.filter((report) => {
+    const haystack = `${report.cat} ${report.bairro} ${report.desc}`.toLowerCase();
+    return (!search || haystack.includes(search))
+      && (statusFilter === 'Todos' || report.status === statusFilter);
+  });
+
+  const counts = (status) => adminReports.filter((report) => report.status === status).length;
+  document.getElementById('adminTotal').textContent = String(adminReports.length);
+  document.getElementById('adminOpen').textContent = String(counts('Aberto'));
+  document.getElementById('adminAnalysis').textContent = String(counts('Em análise'));
+  document.getElementById('adminResolved').textContent = String(counts('Resolvido'));
+
+  if (!filtered.length) {
+    list.innerHTML = '<p class="admin-empty">Nenhum relato encontrado para os filtros selecionados.</p>';
+    return;
+  }
+
+  list.innerHTML = filtered.map((report) => `
+    <article class="admin-report">
+      <div class="admin-report-main">
+        <div class="admin-report-head">
+          <h2>${escapeHTML(report.cat)}</h2>
+          <span class="status ${report.status === 'Resolvido' ? 'resolved' : report.status === 'Em análise' ? 'progress' : 'open'}">${escapeHTML(report.status)}</span>
+        </div>
+        <p class="admin-report-description">${escapeHTML(report.desc)}</p>
+        <div class="admin-report-meta">📍 ${escapeHTML(report.bairro)} · #${escapeHTML(report.id)}</div>
+      </div>
+      <div class="admin-report-actions">
+        <select class="admin-report-status" aria-label="Situação de ${escapeHTML(report.cat)}" data-admin-status="${escapeHTML(report.id)}">
+          <option value="Aberto"${report.status === 'Aberto' ? ' selected' : ''}>Aberto</option>
+          <option value="Em análise"${report.status === 'Em análise' ? ' selected' : ''}>Em análise</option>
+          <option value="Resolvido"${report.status === 'Resolvido' ? ' selected' : ''}>Resolvido</option>
+        </select>
+        <button class="btn secondary" type="button" data-save-admin-status="${escapeHTML(report.id)}">Salvar</button>
+      </div>
+    </article>
+  `).join('');
+
+  list.querySelectorAll('[data-save-admin-status]').forEach((button) => {
+    button.addEventListener('click', () => saveAdminReportStatus(button.dataset.saveAdminStatus, button));
+  });
+}
+
+async function saveAdminReportStatus(reportId, button) {
+  const select = button.parentElement.querySelector(`[data-admin-status="${String(reportId).replace(/"/g, '&quot;')}"]`);
+  if (!select) return;
+  const status = select.value;
+
+  button.disabled = true;
+  button.textContent = 'Salvando...';
+  try {
+    if (!hasSupabaseAuth()) throw new Error('Supabase não configurado.');
+    const { data, error } = await window.supabaseClient
+      .from('reports')
+      .update({ status })
+      .eq('id', reportId)
+      .select('id, status')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('Sem permissão para atualizar este relato.');
+
+    const report = adminReports.find((item) => String(item.id) === String(reportId));
+    if (report) report.status = status;
+    renderAdminReports();
+    toast('Situação atualizada.');
+  } catch (error) {
+    console.error('Erro ao atualizar relato no painel:', error);
+    toast(error?.message || 'Não foi possível atualizar a situação.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Salvar';
+  }
+}
+
 async function logout() {
   if (window.UrbanAuth) {
     await window.UrbanAuth.logout();
@@ -375,6 +566,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (document.getElementById('detailCat')) populateDetail();
   if (document.getElementById('btnLogin')) initLoginPage();
   if (document.getElementById('neighborhoodRanking')) renderNeighborhoodRanking();
+  if (document.getElementById('adminDashboardContent')) initAdminDashboard();
 });
 
 
