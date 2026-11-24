@@ -1261,6 +1261,94 @@ function retakePhoto() {
   startCamera();
 }
 
+function getExifOrientation(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = event => {
+      const view = new DataView(event.target.result);
+      if (view.byteLength < 2 || view.getUint16(0, false) !== 0xFFD8) return resolve(1);
+
+      let offset = 2;
+      while (offset + 4 <= view.byteLength) {
+        const marker = view.getUint16(offset, false);
+        offset += 2;
+
+        if (marker === 0xFFE1) {
+          const segmentLength = view.getUint16(offset, false);
+          const exifHeader = offset + 2;
+          if (view.getUint32(exifHeader, false) !== 0x45786966) return resolve(1);
+
+          const tiffOffset = exifHeader + 6;
+          if (tiffOffset + 8 > view.byteLength) return resolve(1);
+          const littleEndian = view.getUint16(tiffOffset, false) === 0x4949;
+          const ifdOffset = view.getUint32(tiffOffset + 4, littleEndian);
+          const entriesOffset = tiffOffset + ifdOffset;
+          if (entriesOffset + 2 > view.byteLength) return resolve(1);
+
+          const entries = view.getUint16(entriesOffset, littleEndian);
+          for (let index = 0; index < entries; index++) {
+            const entryOffset = entriesOffset + 2 + index * 12;
+            if (entryOffset + 12 > view.byteLength) break;
+            if (view.getUint16(entryOffset, littleEndian) === 0x0112) {
+              return resolve(view.getUint16(entryOffset + 8, littleEndian));
+            }
+          }
+          return resolve(1);
+        }
+
+        if (marker === 0xDA || marker === 0xD9) break;
+        const segmentLength = view.getUint16(offset, false);
+        if (segmentLength < 2) break;
+        offset += segmentLength;
+      }
+      resolve(1);
+    };
+    reader.onerror = () => resolve(1);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function drawImageWithOrientation(img, canvas, orientation) {
+  const swapsDimensions = orientation >= 5 && orientation <= 8;
+  const sourceWidth = img.naturalWidth || img.width;
+  const sourceHeight = img.naturalHeight || img.height;
+  const scale = Math.min(1, 1280 / (swapsDimensions ? sourceHeight : sourceWidth));
+  const scaledWidth = Math.round(sourceWidth * scale);
+  const scaledHeight = Math.round(sourceHeight * scale);
+
+  canvas.width = swapsDimensions ? scaledHeight : scaledWidth;
+  canvas.height = swapsDimensions ? scaledWidth : scaledHeight;
+
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, canvas.width, canvas.height);
+
+  switch (orientation) {
+    case 2:
+      context.transform(-1, 0, 0, 1, canvas.width, 0);
+      break;
+    case 3:
+      context.transform(-1, 0, 0, -1, canvas.width, canvas.height);
+      break;
+    case 4:
+      context.transform(1, 0, 0, -1, 0, canvas.height);
+      break;
+    case 5:
+      context.transform(0, 1, 1, 0, 0, 0);
+      break;
+    case 6:
+      context.transform(0, 1, -1, 0, canvas.height, 0);
+      break;
+    case 7:
+      context.transform(0, -1, -1, 0, canvas.width, canvas.height);
+      break;
+    case 8:
+      context.transform(0, -1, 1, 0, 0, canvas.width);
+      break;
+  }
+
+  context.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+}
+
 function previewPhoto(input) {
   if (!input.files?.[0]) return;
   const file = input.files[0];
@@ -1268,15 +1356,14 @@ function previewPhoto(input) {
     toast('Selecione um arquivo de imagem.');
     return;
   }
+
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
+      const orientation = await getExifOrientation(file);
       const canvas = document.getElementById('photoCanvas');
-      const scale = Math.min(1, 1280 / img.width);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      drawImageWithOrientation(img, canvas, orientation);
       capturedPhoto = canvas.toDataURL('image/jpeg', 0.78);
       showPhotoPreview(capturedPhoto);
       stopCamera();
