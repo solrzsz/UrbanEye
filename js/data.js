@@ -184,29 +184,28 @@ window.UrbanAPI = {
     },
 
     async getNeighborhoodReports() {
-        if (!useSupabaseData()) {
-            throw new Error('Supabase não está configurado para carregar o ranking.');
-        }
-
-        const pageSize = 1000;
         const reports = [];
-        let offset = 0;
+        if (useSupabaseData()) {
+            const pageSize = 1000;
+            let offset = 0;
 
-        while (true) {
-            const { data, error } = await window.supabaseClient
-                .from('reports')
-                .select('bairro, lat, lng')
-                .order('id', { ascending: true })
-                .range(offset, offset + pageSize - 1);
+            while (true) {
+                const { data, error } = await window.supabaseClient
+                    .from('reports')
+                    .select('id, bairro, lat, lng, municipality')
+                    .order('id', { ascending: true })
+                    .range(offset, offset + pageSize - 1);
 
-            if (error) throw error;
+                if (error) throw error;
 
-            reports.push(...(data || []));
+                reports.push(...(data || []));
 
-            if (!data || data.length < pageSize) break;
-            offset += pageSize;
+                if (!data || data.length < pageSize) break;
+                offset += pageSize;
+            }
         }
 
+        if (!isAuthenticatedNow()) reports.push(...readGuestReports());
         return reports;
     },
 

@@ -7,6 +7,49 @@ let municipalityRequestQueue = Promise.resolve();
 let lastGeocodeRequestAt = 0;
 let reportGeocodeSequence = 0;
 let reportGeocodeTimer = null;
+const GEOCODE_STORAGE_KEY = 'urbaneye_geocode_cache_v1';
+const GEOCODE_SUCCESS_TTL = 30 * 24 * 60 * 60 * 1000;
+const GEOCODE_FAILURE_TTL = 24 * 60 * 60 * 1000;
+
+function readGeocodeStorage() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GEOCODE_STORAGE_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+let geocodeStorage = readGeocodeStorage();
+
+function persistGeocodeStorage() {
+  try {
+    localStorage.setItem(GEOCODE_STORAGE_KEY, JSON.stringify(geocodeStorage));
+  } catch (error) {
+    // Cache é opcional; se a cota estourar, a geocodificação continua na memória.
+  }
+}
+
+function readStoredLocation(cacheKey) {
+  const entry = geocodeStorage[cacheKey];
+  if (!entry || !entry.location) return null;
+  if (entry.expiresAt && entry.expiresAt <= Date.now()) {
+    delete geocodeStorage[cacheKey];
+    return null;
+  }
+  return entry.location;
+}
+
+function storeLocation(cacheKey, location) {
+  const ttl = location && (location.bairro || location.municipality)
+    ? GEOCODE_SUCCESS_TTL
+    : GEOCODE_FAILURE_TTL;
+  geocodeStorage[cacheKey] = {
+    location,
+    expiresAt: Date.now() + ttl
+  };
+  persistGeocodeStorage();
+}
 
 // Theme Logic
 function setTheme(theme) {
@@ -589,7 +632,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (document.getElementById('statsGrid')) renderStats();
   if (document.getElementById('detailCat')) populateDetail();
   if (document.getElementById('btnLogin')) initLoginPage();
-  if (document.getElementById('neighborhoodRanking')) renderNeighborhoodRanking();
+  if (document.getElementById('neighborhoodRanking')) {
+    window.UrbanRanking?.init();
+  }
   if (document.getElementById('adminDashboardContent')) initAdminDashboard();
 });
 
@@ -597,79 +642,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadHome() {
   const problems = await UrbanAPI.getProblems();
   document.getElementById('homeCount').textContent = problems.length;
-}
-
-async function renderNeighborhoodRanking() {
-  const ranking = document.getElementById('neighborhoodRanking');
-  if (!ranking) return;
-
-  ranking.innerHTML = '<p class="muted">Carregando ranking...</p>';
-
-  try {
-    let reports = [];
-
-    const generalReports = await window.UrbanAPI.getProblems();
-    let rankingReports = (generalReports || []).filter(report =>
-      String(report.bairro || report.neighborhood || '').trim()
-    );
-
-    if (!rankingReports.length && window.UrbanAPI?.getNeighborhoodReports) {
-      try {
-        rankingReports = await window.UrbanAPI.getNeighborhoodReports();
-      } catch (error) {
-        console.warn('Consulta dedicada do ranking indisponível:', error);
-      }
-    }
-
-    const combined = new Map();
-    rankingReports.forEach(report => {
-      const neighborhood = String(report.bairro || report.neighborhood || '').trim();
-      if (!neighborhood) return;
-
-      const key = neighborhood
-        .toLocaleLowerCase('pt-BR')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/\s+/g, ' ');
-
-      if (!combined.has(key)) {
-        combined.set(key, { name: neighborhood, problems: new Set() });
-      }
-
-      const problemId = report.id != null
-        ? String(report.id)
-        : `${Number(report.lat).toFixed(5)},${Number(report.lng).toFixed(5)}`;
-      combined.get(key).problems.add(problemId);
-    });
-
-    const neighborhoods = [...combined.values()].map(neighborhood => ({
-      name: neighborhood.name,
-      count: neighborhood.problems.size
-    }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
-      .slice(0, 10);
-
-    if (!neighborhoods.length) {
-      ranking.innerHTML = '<p class="muted">Ainda não há relatos com bairro informado.</p>';
-      return;
-    }
-
-    const maxCount = neighborhoods[0].count;
-    ranking.innerHTML = neighborhoods.map((neighborhood, index) => {
-      const percentage = Math.round((neighborhood.count / maxCount) * 100);
-      return `<div class="listitem">
-        <b style="width:20px">${index + 1}</b>
-        <div style="flex:1">
-          <b>${escapeHTML(neighborhood.name)}</b>
-          <div class="progressbar"><i style="width:${percentage}%"></i></div>
-        </div>
-        <strong title="${neighborhood.count} problema${neighborhood.count === 1 ? '' : 's'} reportado${neighborhood.count === 1 ? '' : 's'}">${neighborhood.count} <span class="small muted">problema${neighborhood.count === 1 ? '' : 's'}</span></strong>
-      </div>`;
-    }).join('');
-  } catch (error) {
-    console.error('Erro ao carregar ranking de bairros:', error);
-    ranking.innerHTML = '<p class="muted">Não foi possível carregar o ranking. Tente novamente mais tarde.</p>';
-  }
 }
 
 async function initMapPage() {
@@ -781,6 +753,12 @@ async function identifyLocation(lat, lng) {
   }
   if (municipalityRequests.has(cacheKey)) return municipalityRequests.get(cacheKey);
 
+  const stored = readStoredLocation(cacheKey);
+  if (stored) {
+    municipalityCache.set(cacheKey, stored);
+    return stored;
+  }
+
   const request = municipalityRequestQueue.then(async () => {
     const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeRequestAt));
     if (wait) await new Promise(resolve => setTimeout(resolve, wait));
@@ -811,11 +789,13 @@ async function identifyLocation(lat, lng) {
       };
 
       municipalityCache.set(cacheKey, location);
+      storeLocation(cacheKey, location);
       return location;
     } catch (error) {
       console.warn('Não foi possível identificar bairro e município pelas coordenadas:', error);
       const fallback = { bairro: null, municipality: null, label: null };
       municipalityCache.set(cacheKey, fallback);
+      storeLocation(cacheKey, fallback);
       return fallback;
     } finally {
       municipalityRequests.delete(cacheKey);
@@ -1342,7 +1322,7 @@ async function sendReport() {
 
     if (reportGeocodeTimer) clearTimeout(reportGeocodeTimer);
     reportGeocodeTimer = null;
-    const municipality = await identifyMunicipality(lat, lng);
+    const locationInfo = await identifyLocation(lat, lng);
     await UrbanAPI.addProblem({
       lat,
       lng,
