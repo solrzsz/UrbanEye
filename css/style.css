@@ -308,8 +308,8 @@ p {
   background: linear-gradient(135deg, #2ec3ff, #0b7ae0);
 }
 
-.partner-card.uber .partner-logo {
-  background: linear-gradient(135deg, #000000, #4b4b4b);
+.partner-card.gMaps .partner-logo {
+  background: linear-gradient(135deg, #4285f4, rgb(0, 112, 150));
 }
 
 .content-grid {
