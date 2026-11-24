@@ -77,9 +77,8 @@ function openPartner(app) {
   const coords = lat != null && lng != null ? `${lat},${lng}` : '-22.7858,-43.3116';
   const urls = {
     waze: `https://www.waze.com/pt-BR/live-map/`,
-    maps: `https://www.google.com/maps`,
-    moovit: `https://moovitapp.com/`,
-    uber: `https://auth.uber.com/login/?next=https%3A%2F%2Fm.uber.com%2F`
+    gMaps: `https://www.google.com/maps`,
+    moovit: `https://moovitapp.com/`
   };
   if (urls[app]) window.open(urls[app], '_blank', 'noopener');
 }
