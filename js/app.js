@@ -94,8 +94,15 @@ function useMyLocationForApps() {
 }
 async function shareUrbanEye() {
   const data = { title: 'UrbanEye', text: 'Confira o UrbanEye: relatos e informações sobre mobilidade urbana.', url: location.href };
-  try { if (navigator.share) await navigator.share(data); else if (navigator.clipboard) { await navigator.clipboard.writeText(data.text + ' ' + data.url); toast('Link copiado!'); } else toast('Compartilhamento não disponível neste navegador.'); }
-  catch (e) { if (e.name !== 'AbortError') toast('Não foi possível compartilhar agora.'); }
+  try {
+    if (navigator.share) await navigator.share(data);
+    else if (navigator.clipboard) {
+      await navigator.clipboard.writeText(data.text + ' ' + data.url);
+      toast('Link copiado!');
+    } else toast('Compartilhamento não disponível neste navegador.');
+  } catch (error) {
+    if (error.name !== 'AbortError') toast('Não foi possível compartilhar agora.');
+  }
 }
 
 
@@ -383,22 +390,42 @@ async function initAdminDashboard() {
 
 async function loadAdminReports() {
   const list = document.getElementById('adminReportsList');
-  if (list) list.innerHTML = '<p class="admin-empty">Carregando relatos...</p>';
+  if (list) list.innerHTML = '<p class="admin-empty">Carregando relatos e localizações...</p>';
 
   try {
     const reports = await UrbanAPI.getProblems();
-    adminReports = (reports || []).map((report) => ({
-      ...report,
-      cat: report.cat || report.category || 'Outro',
-      desc: report.desc || report.description || 'Sem descrição',
-      status: window.normalizeProblemStatus ? normalizeProblemStatus(report.status) : report.status,
-      bairro: report.bairro || report.neighborhood || 'Local não informado'
+    adminReports = await Promise.all((reports || []).map(async (report) => {
+      const mapped = {
+        ...report,
+        cat: report.cat || report.category || 'Outro',
+        desc: report.desc || report.description || 'Sem descrição',
+        status: window.normalizeProblemStatus ? normalizeProblemStatus(report.status) : report.status,
+        bairro: report.bairro || report.neighborhood || null,
+        municipality: report.municipality || null
+      };
+
+      const lat = Number(mapped.lat);
+      const lng = Number(mapped.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const location = await identifyLocation(lat, lng);
+        mapped.bairro = mapped.bairro || location.bairro;
+        mapped.municipality = mapped.municipality || location.municipality;
+      }
+
+      if (!mapped.bairro) mapped.bairro = 'Local não informado';
+      return mapped;
     }));
     renderAdminReports();
   } catch (error) {
     console.error('Erro ao carregar painel administrativo:', error);
     if (list) list.innerHTML = '<p class="admin-empty">Não foi possível carregar os relatos.</p>';
   }
+}
+
+function getAdminReportLocation(report) {
+  const bairro = report.bairro && report.bairro !== 'Local não informado' ? report.bairro : null;
+  const municipio = report.municipality || null;
+  return [bairro, municipio].filter(Boolean).join(' · ') || 'Local não informado';
 }
 
 function renderAdminReports() {
@@ -408,7 +435,8 @@ function renderAdminReports() {
   const search = String(document.getElementById('adminSearch')?.value || '').trim().toLowerCase();
   const statusFilter = document.getElementById('adminStatusFilter')?.value || 'Todos';
   const filtered = adminReports.filter((report) => {
-    const haystack = `${report.cat} ${report.bairro} ${report.desc}`.toLowerCase();
+    const location = getAdminReportLocation(report);
+    const haystack = `${report.cat} ${location} ${report.bairro || ''} ${report.desc}`.toLowerCase();
     return (!search || haystack.includes(search))
       && (statusFilter === 'Todos' || report.status === statusFilter);
   });
@@ -432,10 +460,11 @@ function renderAdminReports() {
           <span class="status ${report.status === 'Resolvido' ? 'resolved' : report.status === 'Em análise' ? 'progress' : 'open'}">${escapeHTML(report.status)}</span>
         </div>
         <p class="admin-report-description">${escapeHTML(report.desc)}</p>
-        <div class="admin-report-meta">📍 ${escapeHTML(report.bairro)} · #${escapeHTML(report.id)}</div>
+        <div class="admin-report-meta">📍 ${escapeHTML(getAdminReportLocation(report))} · #${escapeHTML(report.id)}</div>
       </div>
       <div class="admin-report-actions">
-        <select class="admin-report-status" aria-label="Situação de ${escapeHTML(report.cat)}" data-admin-status="${escapeHTML(report.id)}">
+        <button class="btn secondary admin-view-details" type="button" data-admin-details="${escapeHTML(report.id)}">Ver detalhes</button>
+        <select class="admin-report-status ${report.status === 'Resolvido' ? 'admin-status-resolved' : report.status === 'Em análise' ? 'admin-status-progress' : 'admin-status-open'}" aria-label="Situação de ${escapeHTML(report.cat)}" data-admin-status="${escapeHTML(report.id)}">
           <option value="Aberto"${report.status === 'Aberto' ? ' selected' : ''}>Aberto</option>
           <option value="Em análise"${report.status === 'Em análise' ? ' selected' : ''}>Em análise</option>
           <option value="Resolvido"${report.status === 'Resolvido' ? ' selected' : ''}>Resolvido</option>
@@ -445,40 +474,20 @@ function renderAdminReports() {
     </article>
   `).join('');
 
+  list.querySelectorAll('[data-admin-details]').forEach((button) => {
+    button.addEventListener('click', () => openProblem(button.dataset.adminDetails));
+  });
   list.querySelectorAll('[data-save-admin-status]').forEach((button) => {
     button.addEventListener('click', () => saveAdminReportStatus(button.dataset.saveAdminStatus, button));
   });
-}
-
-async function saveAdminReportStatus(reportId, button) {
-  const select = button.parentElement.querySelector(`[data-admin-status="${String(reportId).replace(/"/g, '&quot;')}"]`);
-  if (!select) return;
-  const status = select.value;
-
-  button.disabled = true;
-  button.textContent = 'Salvando...';
-  try {
-    if (!hasSupabaseAuth()) throw new Error('Supabase não configurado.');
-    const { data, error } = await window.supabaseClient
-      .from('reports')
-      .update({ status })
-      .eq('id', reportId)
-      .select('id, status')
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error('Sem permissão para atualizar este relato.');
-
-    const report = adminReports.find((item) => String(item.id) === String(reportId));
-    if (report) report.status = status;
-    renderAdminReports();
-    toast('Situação atualizada.');
-  } catch (error) {
-    console.error('Erro ao atualizar relato no painel:', error);
-    toast(error?.message || 'Não foi possível atualizar a situação.');
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Salvar';
-  }
+  list.querySelectorAll('[data-admin-status]').forEach((select) => {
+    select.addEventListener('change', () => {
+      select.classList.remove('admin-status-open', 'admin-status-progress', 'admin-status-resolved');
+      if (select.value === 'Resolvido') select.classList.add('admin-status-resolved');
+      else if (select.value === 'Em análise') select.classList.add('admin-status-progress');
+      else select.classList.add('admin-status-open');
+    });
+  });
 }
 
 async function logout() {
@@ -1668,4 +1677,42 @@ async function closeProfileEditor() {
     profileAvatarPreviewUrl = null;
   }
   await renderProfileHeader();
+}
+
+async function saveAdminReportStatus(reportId, button) {
+  const article = button?.closest('.admin-report');
+  const select = article?.querySelector(`[data-admin-status="${CSS.escape(String(reportId))}"]`);
+  if (!select) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Salvando...';
+
+  try {
+    const status = await UrbanAPI.updateProblemStatus(reportId, select.value);
+    const report = adminReports.find((item) => String(item.id) === String(reportId));
+    if (report) report.status = status;
+
+    const badge = article.querySelector('.status');
+    if (badge) {
+      badge.textContent = status;
+      badge.className = `status ${status === 'Resolvido' ? 'resolved' : status === 'Em análise' ? 'progress' : 'open'}`;
+    }
+
+    select.classList.remove('admin-status-open', 'admin-status-progress', 'admin-status-resolved');
+    if (status === 'Resolvido') select.classList.add('admin-status-resolved');
+    else if (status === 'Em análise') select.classList.add('admin-status-progress');
+    else select.classList.add('admin-status-open');
+
+    document.getElementById('adminOpen').textContent = String(adminReports.filter((item) => item.status === 'Aberto').length);
+    document.getElementById('adminAnalysis').textContent = String(adminReports.filter((item) => item.status === 'Em análise').length);
+    document.getElementById('adminResolved').textContent = String(adminReports.filter((item) => item.status === 'Resolvido').length);
+    toast('Situação atualizada com sucesso!');
+  } catch (error) {
+    console.error('Erro ao salvar situação administrativa:', error);
+    toast(error?.message || 'Não foi possível alterar o status do problema.');
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 }

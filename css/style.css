@@ -2094,14 +2094,33 @@ body:has(.admin-auth-shell) {
 }
 
 .admin-toolbar select {
-  width: 180px;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 42px;
+  box-sizing: border-box;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding: 0 34px 0 12px;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 42px;
 }
 
-.admin-toolbar input:focus,
-.admin-toolbar select:focus,
-.admin-report-status:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(23, 105, 224, 0.10);
+.admin-toolbar select {
+  color: var(--primary);
+  border-color: rgba(23, 105, 224, 0.28);
+  background-color: rgba(23, 105, 224, 0.08);
+}
+
+.admin-report-status {
+  min-width: 145px;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 
 .admin-reports {
@@ -2149,20 +2168,17 @@ body:has(.admin-auth-shell) {
 
 .admin-report-actions {
   justify-content: flex-end;
-}
-
-.admin-report-status {
-  min-width: 145px;
-  height: 42px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--input-bg);
-  padding: 0 10px;
+  flex-wrap: wrap;
 }
 
 .admin-report-actions .btn {
   width: auto;
   padding: 10px 12px;
+}
+
+.admin-view-details {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
 }
 
 .admin-empty {
@@ -2198,7 +2214,6 @@ body:has(.admin-auth-shell) {
   background:
     radial-gradient(circle at 85% 18%, rgba(255, 255, 255, 0.16), transparent 22%),
     radial-gradient(circle at 12% 84%, rgba(76, 154, 255, 0.34), transparent 30%),
-    linear-gradient(145deg, #1769e0 0%, #1557b8 58%, #0b3d86 100%);
     var(--primary2);
 }
 
@@ -2701,4 +2716,59 @@ body:has(.admin-auth-shell) {
   .ranking-notice {
     font-size: 12px;
   }
+}
+
+admin-toolbar select,
+.admin-report-status {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 42px;
+  box-sizing: border-box;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding: 0 34px 0 12px;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 42px;
+}
+
+.admin-report-status {
+  min-width: 145px;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-status-open {
+  color: #a95e00;
+  border-color: rgba(245, 166, 35, 0.55);
+  background-color: rgba(245, 166, 35, 0.12);
+}
+
+.admin-status-progress {
+  color: var(--primary);
+  border-color: rgba(23, 105, 224, 0.45);
+  background-color: rgba(23, 105, 224, 0.10);
+}
+
+.admin-status-resolved {
+  color: var(--success);
+  border-color: rgba(34, 160, 107, 0.45);
+  background-color: rgba(34, 160, 107, 0.10);
+}
+
+[data-theme="dark"] .admin-status-open {
+  color: var(--warning);
+}
+
+[data-theme="dark"] .admin-status-progress {
+  color: var(--primary);
+}
+
+[data-theme="dark"] .admin-status-resolved {
+  color: var(--success);
 }

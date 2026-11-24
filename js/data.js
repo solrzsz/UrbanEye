@@ -625,13 +625,12 @@ window.UrbanAPI = {
             .from('reports')
             .update({ status: normalizedStatus })
             .eq('id', reportId)
-            .eq('user_id', user.id)
             .select('id, status')
             .maybeSingle();
 
         if (error) throw error;
         if (!data) {
-            throw new Error('Não foi possível atualizar. Apenas quem publicou o relato pode alterar a situação.');
+            throw new Error('Não foi possível atualizar. Sua conta não tem permissão para alterar este relato.');
         }
 
         invalidateCurrentUserCache();
