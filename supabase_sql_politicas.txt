@@ -85,6 +85,16 @@ create table public.reports (
   created_at timestamptz default now()
 );
 
+-- Normalize legacy values and enforce the application's fixed report palette.
+update public.reports
+set color = '#1769e0'
+where color is not null
+  and lower(color) not in ('#e53935', '#f5a623', '#1769e0', '#22a06b', '#7a5af8');
+
+alter table public.reports
+  add constraint reports_color_palette_check
+  check (color is null or lower(color) in ('#e53935', '#f5a623', '#1769e0', '#22a06b', '#7a5af8'));
+
 -- 2) Habilitar RLS
 alter table public.reports enable row level security;
 

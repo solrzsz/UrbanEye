@@ -51,28 +51,14 @@
     <section class="screen active" style="padding-bottom: 78px;">
 
       <div class="top"><button class="iconbtn" onclick="show('home')">‹</button><b>Notificações</b><button
-          class="iconbtn" onclick="toast('Tudo marcado como lido')">Marcar como lidas</button></div>
+          id="markNotificationsRead" class="iconbtn" onclick="markNotificationsRead()" hidden>Marcar como lidas</button></div>
       <div class="card form-card">
         <div class="auth-notice" data-guest-only>
           <b>Modo visitante</b>
-          <span>As notificações abaixo são exemplos. Entre na conta para receber alertas reais da sua região.</span>
+          <span>Entre na sua conta para receber alertas quando a situação dos seus relatos mudar.</span>
           <button type="button" class="btn secondary" style="margin-top:10px;width:auto" onclick="openLogin('notifications.html')">Entrar na conta</button>
         </div>
-        <div class="listitem">
-          <div><b>Problema atualizado</b>
-            <p class="small muted">Seu relato de iluminação foi marcado como resolvido via API do prefeitura.</p>
-          </div>
-        </div>
-        <div class="listitem">
-          <div><b>Novo problema perto de você</b>
-            <p class="small muted">Um novo buraco foi reportado no Centro.</p>
-          </div>
-        </div>
-        <div class="listitem">
-          <div><b>Você ganhou pontos!</b>
-            <p class="small muted">Sua participação ajudou a comunidade.</p>
-          </div>
-        </div>
+        <div id="notificationsList" role="status" aria-live="polite">Carregando notificações...</div>
       </div>
 
     </section>

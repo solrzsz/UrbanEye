@@ -70,24 +70,173 @@ function initTheme() {
   setTheme(saved);
 }
 
+function isLocationEnabled() {
+  try {
+    return localStorage.getItem('urbaneye_location_enabled') !== 'false';
+  } catch (error) {
+    console.warn('Não foi possível ler a preferência de localização:', error);
+    return true;
+  }
+}
+
+async function initSettings() {
+  const locationPreference = document.getElementById('locationPreference');
+  const notificationPreference = document.getElementById('notificationPreference');
+  const notificationHelp = document.getElementById('notificationPreferenceHelp');
+
+  if (locationPreference) {
+    locationPreference.checked = isLocationEnabled();
+    locationPreference.addEventListener('change', () => {
+      try {
+        localStorage.setItem('urbaneye_location_enabled', String(locationPreference.checked));
+        if (!locationPreference.checked) {
+          window.urbaneyeLat = null;
+          window.urbaneyeLng = null;
+        }
+        toast(locationPreference.checked ? 'Uso da localização ativado.' : 'Uso da localização desativado.');
+      } catch (error) {
+        locationPreference.checked = isLocationEnabled();
+        console.error('Não foi possível salvar a preferência de localização:', error);
+        toast('Não foi possível salvar essa preferência neste navegador.');
+      }
+    });
+  }
+
+  if (!notificationPreference) return;
+  if (!window.UrbanAuth?.isAuthenticated?.()) {
+    notificationPreference.checked = false;
+    notificationPreference.disabled = true;
+    if (notificationHelp) notificationHelp.textContent = 'Entre na sua conta para configurar alertas de atualização dos seus relatos.';
+    return;
+  }
+
+  notificationPreference.disabled = true;
+  if (notificationHelp) notificationHelp.textContent = 'Carregando preferência da conta...';
+  let preferenceLoaded = false;
+  try {
+    notificationPreference.checked = await UrbanAPI.getNotificationPreference();
+    preferenceLoaded = true;
+    if (notificationHelp) notificationHelp.textContent = 'Alertas quando a situação dos seus relatos mudar.';
+  } catch (error) {
+    console.error('Não foi possível carregar a preferência de notificações:', error);
+    if (notificationHelp) notificationHelp.textContent = 'Não foi possível carregar a preferência. Confira a migração de notificações do Supabase.';
+  } finally {
+    notificationPreference.disabled = !preferenceLoaded;
+  }
+  if (!preferenceLoaded) return;
+
+  notificationPreference.addEventListener('change', async () => {
+    const nextValue = notificationPreference.checked;
+    notificationPreference.disabled = true;
+    try {
+      await UrbanAPI.setNotificationPreference(nextValue);
+      toast(nextValue ? 'Alertas de atualização ativados.' : 'Alertas de atualização desativados.');
+    } catch (error) {
+      notificationPreference.checked = !nextValue;
+      console.error('Não foi possível salvar a preferência de notificações:', error);
+      toast(error?.message || 'Não foi possível salvar essa preferência.');
+    } finally {
+      notificationPreference.disabled = false;
+    }
+  });
+}
+
+async function renderNotifications() {
+  const list = document.getElementById('notificationsList');
+  const markReadButton = document.getElementById('markNotificationsRead');
+  if (!list) return;
+
+  if (!window.UrbanAuth?.isAuthenticated?.()) {
+    list.textContent = 'Entre na sua conta para ver atualizações dos seus relatos.';
+    if (markReadButton) markReadButton.hidden = true;
+    return;
+  }
+
+  list.textContent = 'Carregando notificações...';
+  if (markReadButton) {
+    markReadButton.hidden = true;
+    markReadButton.disabled = false;
+  }
+
+  try {
+    const notifications = await UrbanAPI.getNotifications();
+    const unreadCount = notifications.filter(notification => !notification.read_at).length;
+    if (markReadButton) markReadButton.hidden = unreadCount === 0;
+    if (!notifications.length) {
+      list.textContent = 'Nenhum alerta de atualização ainda. Você receberá um quando a situação de um dos seus relatos mudar.';
+      return;
+    }
+
+    list.replaceChildren();
+    notifications.forEach(notification => {
+      const item = document.createElement('article');
+      item.className = 'listitem';
+      item.setAttribute('aria-label', notification.read_at ? 'Notificação lida' : 'Notificação não lida');
+
+      const content = document.createElement('div');
+      content.style.flex = '1';
+      const title = document.createElement('b');
+      title.textContent = notification.title;
+      const message = document.createElement('p');
+      message.className = 'small muted';
+      message.textContent = notification.message;
+      content.append(title, message);
+
+      if (notification.created_at) {
+        const date = new Date(notification.created_at);
+        if (Number.isFinite(date.getTime())) {
+          const time = document.createElement('time');
+          time.className = 'small muted';
+          time.dateTime = date.toISOString();
+          time.textContent = date.toLocaleString('pt-BR');
+          content.appendChild(time);
+        }
+      }
+
+      item.appendChild(content);
+      list.appendChild(item);
+    });
+  } catch (error) {
+    console.error('Não foi possível carregar as notificações:', error);
+    list.textContent = 'Não foi possível carregar notificações. Confira se a migração supabase_notifications.sql foi executada no projeto Supabase.';
+  }
+}
+
+async function markNotificationsRead() {
+  const button = document.getElementById('markNotificationsRead');
+  if (button) button.disabled = true;
+  try {
+    const count = await UrbanAPI.markNotificationsRead();
+    await renderNotifications();
+    toast(count ? 'Notificações marcadas como lidas.' : 'Não há notificações novas.');
+  } catch (error) {
+    console.error('Não foi possível marcar as notificações como lidas:', error);
+    toast(error?.message || 'Não foi possível atualizar as notificações.');
+    if (button) button.disabled = false;
+  }
+}
+
 // Integrações externas: abrem os aplicativos/sites parceiros; não fazem login OAuth nem sincronizam dados privados.
 function openPartner(app) {
   const lat = window.urbaneyeLat;
   const lng = window.urbaneyeLng;
-  const coords = lat != null && lng != null ? `${lat},${lng}` : '-22.7858,-43.3116';
+  const hasLocation = isLocationEnabled() && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+  const coords = encodeURIComponent(hasLocation ? `${lat},${lng}` : '-22.7858,-43.3116');
   const urls = {
-    waze: `https://www.waze.com/pt-BR/live-map/`,
-    gMaps: `https://www.google.com/maps`,
-    moovit: `https://moovitapp.com/`
+    waze: `https://www.waze.com/ul?ll=${coords}`,
+    maps: `https://www.google.com/maps/search/?api=1&query=${coords}`,
+    moovit: 'https://moovitapp.com/',
+    uber: 'https://m.uber.com/'
   };
   if (urls[app]) window.open(urls[app], '_blank', 'noopener');
 }
 function useMyLocationForApps() {
+  if (!isLocationEnabled()) { toast('Ative o uso da localização nas configurações primeiro.'); return; }
   if (!navigator.geolocation) { toast('Seu navegador não oferece localização.'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
     window.urbaneyeLat = pos.coords.latitude; window.urbaneyeLng = pos.coords.longitude;
     const el = document.getElementById('integrationLocation');
-    if (el) el.textContent = 'Localização pronta para compartilhar com os apps.';
+    if (el) el.textContent = 'Localização pronta para abrir no Waze e Google Maps.';
     toast('Localização obtida!');
   }, () => toast('Não foi possível obter a localização. Verifique a permissão.'), { enableHighAccuracy: true, timeout: 10000 });
 }
@@ -943,6 +1092,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (document.getElementById('profileName')) renderProfileHeader();
   if (document.getElementById('statsGrid')) renderStats();
   if (document.getElementById('detailCat')) populateDetail();
+  if (document.getElementById('locationPreference')) initSettings();
+  if (document.getElementById('notificationsList')) renderNotifications();
   if (document.getElementById('btnLogin')) initLoginPage();
   if (document.getElementById('adminEmail')) redirectActiveInstitutionalSession();
   if (document.getElementById('neighborhoodRanking')) {
@@ -1019,13 +1170,16 @@ function renderMapData(problems) {
     const groupProblems = group.problems;
     const count = groupProblems.length;
     const first = groupProblems[0];
+    const markerColor = window.normalizeProblemColor
+      ? window.normalizeProblemColor(first.color)
+      : '#1769e0';
     const badge = count > 1
       ? `<div style="position:absolute;right:-7px;top:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#202638;color:white;border:2px solid white;font-size:11px;font-weight:800;line-height:14px;text-align:center">${count}</div>`
       : '';
 
     const icon = L.divIcon({
       className: 'custom-marker',
-      html: `<div style="position:relative;width:24px;height:24px;border-radius:50%;background:${first.color || '#1769e0'};border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.5)">${badge}</div>`,
+      html: `<div style="position:relative;width:24px;height:24px;border-radius:50%;background:${markerColor};border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.5)">${badge}</div>`,
       iconSize: [24, 24],
       iconAnchor: [12, 12]
     });
@@ -1168,8 +1322,26 @@ async function populateDetail() {
   const id = localStorage.getItem('urbaneye_current_problem');
   const shouldOpenEditor = localStorage.getItem('urbaneye_edit_problem_on_open') === 'true';
   localStorage.removeItem('urbaneye_edit_problem_on_open');
-  const p = await UrbanAPI.getProblemById(id);
-  if (!p) return;
+  const p = id ? await UrbanAPI.getProblemById(id) : null;
+  if (!p) {
+    const category = document.getElementById('detailCat');
+    const locationLabel = document.getElementById('detailLoc');
+    const description = document.getElementById('detailDesc');
+    const photo = document.getElementById('detailPhoto');
+    if (category) category.textContent = 'Relato não encontrado';
+    if (locationLabel) locationLabel.textContent = '';
+    if (description) description.textContent = 'Este relato não está mais disponível. Volte ao mapa para ver os relatos atuais.';
+    if (photo) photo.textContent = 'Relato indisponível';
+    ['detailEditCard', 'detailEditor', 'detailStatusEditor', 'detailDeleteCard'].forEach(id => {
+      const element = document.getElementById(id);
+      if (element) element.hidden = true;
+    });
+    const progressCard = document.getElementById('detailProgress')?.closest('.card');
+    const confirmationCard = document.getElementById('detailConfirmButton')?.closest('.card');
+    if (progressCard) progressCard.hidden = true;
+    if (confirmationCard) confirmationCard.hidden = true;
+    return;
+  }
   currentDetailProblem = p;
   document.getElementById('detailCat').textContent = p.cat;
   updateProblemStatusDisplay(p.status);
@@ -1408,6 +1580,10 @@ function initReportPage() {
 }
 
 function locateUserForReport() {
+  if (!isLocationEnabled()) {
+    toast('Ative o uso da localização nas configurações ou marque o ponto manualmente no mapa.');
+    return;
+  }
   if (!navigator.geolocation) {
     toast('Seu navegador não oferece localização.');
     return;
@@ -1439,6 +1615,10 @@ function locateUserForReport() {
 }
 
 function locateUser() {
+  if (!isLocationEnabled()) {
+    toast('Ative o uso da localização nas configurações primeiro.');
+    return;
+  }
   if (!navigator.geolocation) {
     toast('Seu navegador não oferece localização.');
     return;
@@ -1764,21 +1944,26 @@ async function renderHistory(elementId, limit = null) {
     return;
   }
 
-  box.innerHTML = problems.map(p => `
-    <div class="listitem">
-      <i class="dot" style="background:${p.color || '#1769e0'}"></i>
-      <div style="flex:1">
-        <div class="between"><b>${escapeHTML(p.cat)}</b><span class="status ${p.status === 'Resolvido' ? 'resolved' : p.status === 'Em análise' ? 'progress' : 'open'}">${escapeHTML(p.status)}</span></div>
-        <div class="small muted">${escapeHTML(p.desc)}</div>
-        ${p.is_guest ? '<div class="small guest-tag">Salvo apenas neste navegador</div>' : ''}
-      </div>
-      <div class="report-actions">
-        <button type="button" class="edit-report-button" data-report-id="${escapeHTML(p.id)}"
-          aria-label="Editar relato: ${escapeHTML(p.cat)}">Editar</button>
-        <button type="button" class="delete-report-button" data-report-id="${escapeHTML(p.id)}"
-          aria-label="Apagar relato: ${escapeHTML(p.cat)}">Apagar</button>
-      </div>
-    </div>`).join('');
+  box.innerHTML = problems.map(p => {
+    const color = window.normalizeProblemColor
+      ? window.normalizeProblemColor(p.color)
+      : '#1769e0';
+    return `
+      <div class="listitem">
+        <i class="dot" style="background:${color}"></i>
+        <div style="flex:1">
+          <div class="between"><b>${escapeHTML(p.cat)}</b><span class="status ${p.status === 'Resolvido' ? 'resolved' : p.status === 'Em análise' ? 'progress' : 'open'}">${escapeHTML(p.status)}</span></div>
+          <div class="small muted">${escapeHTML(p.desc)}</div>
+          ${p.is_guest ? '<div class="small guest-tag">Salvo apenas neste navegador</div>' : ''}
+        </div>
+        <div class="report-actions">
+          <button type="button" class="edit-report-button" data-report-id="${escapeHTML(p.id)}"
+            aria-label="Editar relato: ${escapeHTML(p.cat)}">Editar</button>
+          <button type="button" class="delete-report-button" data-report-id="${escapeHTML(p.id)}"
+            aria-label="Apagar relato: ${escapeHTML(p.cat)}">Apagar</button>
+        </div>
+      </div>`;
+  }).join('');
 
   box.querySelectorAll('.edit-report-button').forEach(button => {
     button.addEventListener('click', () => editProblemFromHistory(button.dataset.reportId));
@@ -1858,11 +2043,22 @@ function clearLocalData() {
 }
 
 function getFilterState() {
-  const settings = JSON.parse(localStorage.getItem('urbaneye_filters') || '{}');
+  let settings = {};
+  try {
+    const saved = JSON.parse(localStorage.getItem('urbaneye_filters') || '{}');
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) settings = saved;
+  } catch (error) {
+    console.warn('Filtros salvos inválidos; usando os filtros padrão:', error);
+    try {
+      localStorage.removeItem('urbaneye_filters');
+    } catch (storageError) {
+      console.warn('Não foi possível remover os filtros inválidos:', storageError);
+    }
+  }
   return {
-    category: settings.category || 'Todas',
-    status: settings.status || 'Todos',
-    bairro: settings.bairro || 'Todos os bairros'
+    category: typeof settings.category === 'string' && settings.category ? settings.category : 'Todas',
+    status: typeof settings.status === 'string' && settings.status ? settings.status : 'Todos',
+    bairro: typeof settings.bairro === 'string' && settings.bairro ? settings.bairro : 'Todos os bairros'
   };
 }
 

@@ -11,6 +11,18 @@ const MAX_GUEST_REPORTS = 25;
 const USER_CACHE_PREFIX = 'urbaneye_user_cache_v1_';
 const USER_CACHE_TTL = 5 * 60 * 1000;
 const userReportsRequests = new Map();
+const PROBLEM_COLOR_PALETTE = new Set([
+    '#e53935',
+    '#f5a623',
+    '#1769e0',
+    '#22a06b',
+    '#7a5af8'
+]);
+
+function normalizeProblemColor(color) {
+    const normalized = String(color || '').trim().toLowerCase();
+    return PROBLEM_COLOR_PALETTE.has(normalized) ? normalized : '#1769e0';
+}
 
 function readUserCache(type, userId) {
     try {
@@ -76,7 +88,7 @@ function normalizeProblemRow(row) {
         status: normalizeProblemStatus(row.status),
         lat: Number(row.lat),
         lng: Number(row.lng),
-        color: row.color || '#1769e0',
+        color: normalizeProblemColor(row.color),
         photo: row.photo_url || row.photo || null,
         bairro: row.bairro || row.neighborhood || null,
         municipality: row.municipality || null,
@@ -91,7 +103,7 @@ function normalizeProblemPayload(problem) {
         status: normalizeProblemStatus(problem.status),
         lat: problem.lat,
         lng: problem.lng,
-        color: problem.color || '#1769e0',
+        color: normalizeProblemColor(problem.color),
         bairro: problem.bairro || null,
         municipality: problem.municipality || null,
         photo_url: problem.photo || null
@@ -172,6 +184,8 @@ async function fetchRemoteProblems() {
 
     return (data || []).map(normalizeProblemRow);
 }
+
+window.normalizeProblemColor = normalizeProblemColor;
 
 window.UrbanAPI = {
     async getProblems() {
@@ -469,12 +483,95 @@ window.UrbanAPI = {
     },
 
     async getNotifications() {
-        // Notificações ainda são demonstrativas para todos os perfis.
-        return [
-            { title: 'Problema atualizado', text: 'Seu relato de iluminação foi marcado como resolvido.', read: false },
-            { title: 'Novo problema perto de você', text: 'Um novo buraco foi reportado no Centro.', read: false },
-            { title: 'Você ganhou pontos!', text: 'Sua participação ajudou a comunidade.', read: false }
-        ];
+        if (!isAuthenticatedNow() || !useSupabaseData()) {
+            throw new Error('Entre em uma conta conectada ao Supabase para ver as notificações.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para ver as notificações.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('notifications')
+            .select('id, report_id, title, message, created_at, read_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    async markNotificationsRead() {
+        if (!isAuthenticatedNow() || !useSupabaseData()) {
+            throw new Error('Entre em uma conta conectada ao Supabase para atualizar as notificações.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para atualizar as notificações.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('user_id', user.id)
+            .is('read_at', null)
+            .select('id');
+
+        if (error) throw error;
+        return data?.length || 0;
+    },
+
+    async getNotificationPreference() {
+        if (!isAuthenticatedNow() || !useSupabaseData()) {
+            throw new Error('Entre em uma conta conectada ao Supabase para configurar notificações.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para configurar notificações.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('profiles')
+            .select('notifications_enabled')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Perfil não encontrado. Atualize o perfil antes de alterar as notificações.');
+        return data.notifications_enabled !== false;
+    },
+
+    async setNotificationPreference(enabled) {
+        if (typeof enabled !== 'boolean') {
+            throw new Error('A preferência de notificações é inválida.');
+        }
+        if (!isAuthenticatedNow() || !useSupabaseData()) {
+            throw new Error('Entre em uma conta conectada ao Supabase para configurar notificações.');
+        }
+
+        const { data: sessionData, error: sessionError } = await window.supabaseClient.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (sessionError || !user) {
+            throw new Error('Sua sessão expirou. Entre novamente para configurar notificações.');
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('profiles')
+            .update({ notifications_enabled: enabled })
+            .eq('id', user.id)
+            .select('id')
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error('Não foi possível salvar a preferência de notificações do perfil.');
+        return enabled;
     },
 
     async addProblem(problem) {
@@ -486,7 +583,7 @@ window.UrbanAPI = {
                 status: problem.status || 'Aberto',
                 lat: problem.lat,
                 lng: problem.lng,
-                color: problem.color || '#1769e0',
+                color: normalizeProblemColor(problem.color),
                 bairro: problem.bairro || null,
                 municipality: problem.municipality || null,
                 photo_url: problem.photo || null,

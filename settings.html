@@ -52,8 +52,8 @@
 <div class="content-grid">
   <div class="card">
   <div class="listitem" style="align-items:flex-start"><div></div><div style="flex:1"><b>Aparência</b><div class="small muted">Escolha entre tema claro e escuro</div><div class="theme-choices"><button type="button" data-theme-choice="light" onclick="setTheme('light')">Claro</button><button type="button" data-theme-choice="dark" onclick="setTheme('dark')">Escuro</button></div></div></div>
-  <div class="listitem"><div></div><div style="flex:1"><b>Notificações</b><div class="small muted">Alertas sobre sua região</div></div><input class="toggle" type="checkbox" checked></div>
-  <div class="listitem"><div></div><div style="flex:1"><b>Localização</b><div class="small muted">Usar localização atual</div></div><input class="toggle" type="checkbox" checked></div>
+  <div class="listitem"><div></div><div style="flex:1"><label for="notificationPreference"><b>Notificações</b></label><div id="notificationPreferenceHelp" class="small muted">Alertas quando a situação dos seus relatos mudar.</div></div><input id="notificationPreference" class="toggle" type="checkbox" checked aria-label="Ativar notificações de atualização"></div>
+  <div class="listitem"><div></div><div style="flex:1"><label for="locationPreference"><b>Localização</b></label><div class="small muted">Permitir o uso da localização atual neste navegador</div></div><input id="locationPreference" class="toggle" type="checkbox" checked aria-label="Permitir uso da localização"></div>
   <div class="listitem" onclick="show('help')" style="cursor:pointer"><div></div><div style="flex:1"><b>Privacidade e segurança</b><div class="small muted">Boas práticas e proteção dos dados</div></div><span>›</span></div>
   <div class="listitem"><div></div><div><b>Sobre o UrbanEye</b><div class="small muted">Versão App 4.0 • API + Temas</div></div></div>
   <div class="listitem" onclick="exportData()" style="cursor:pointer"><div></div><div><b>Exportar meus dados (API)</b><div class="small muted">Baixar uma cópia dos seus relatos</div></div></div>
