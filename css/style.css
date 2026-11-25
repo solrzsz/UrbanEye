@@ -1293,6 +1293,42 @@ p {
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.2)
 }
 
+@media (max-width: 640px) {
+  .mapbox {
+    top: 8px;
+    right: 8px;
+    bottom: auto;
+    left: 8px;
+    padding: 6px;
+  }
+
+  .mapbox .between {
+    gap: 8px;
+  }
+
+  .mapbox .between > b {
+    font-size: 14px;
+  }
+
+  .mapbox > p {
+    margin: 3px 0;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .mapbox .row {
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .mapbox .row .btn {
+    min-width: 0;
+    padding: 6px 4px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+}
+
 .nav {
   position: fixed;
   bottom: 0;
@@ -1310,13 +1346,25 @@ p {
 .nav button {
   background: none;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
   flex: 1
+}
+
+.nav button svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .nav button.active {
@@ -1324,7 +1372,11 @@ p {
 }
 
 .nav .plus {
-  margin-top: -24px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: -40px;
+  margin-top: 0;
   background: var(--primary);
   color: #fff;
   width: 54px;
