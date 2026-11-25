@@ -15,6 +15,38 @@
 
   let capturedPhoto = null;
 
+  function isPointOnSegment(lng, lat, x1, y1, x2, y2) {
+    const cross = (lng - x1) * (y2 - y1) - (lat - y1) * (x2 - x1);
+    const withinSegment = (lng - x1) * (lng - x2) + (lat - y1) * (lat - y2) <= 1e-10;
+    return Math.abs(cross) <= 1e-8 && withinSegment;
+  }
+
+  function isPointInRing(lng, lat, ring) {
+    let inside = false;
+    for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index, index += 1) {
+      const [x1, y1] = ring[index];
+      const [x2, y2] = ring[previous];
+      if (isPointOnSegment(lng, lat, x1, y1, x2, y2)) return true;
+      const crossesLatitude = (y1 > lat) !== (y2 > lat);
+      const intersectionLng = ((x2 - x1) * (lat - y1)) / (y2 - y1) + x1;
+      if (crossesLatitude && lng < intersectionLng) inside = !inside;
+    }
+    return inside;
+  }
+
+  function isLocationWithinRio(lat, lng) {
+    const polygons = window.UrbanEyeRioBoundary?.coordinates;
+    if (!Array.isArray(polygons)) {
+      console.error('O limite geográfico do estado do Rio de Janeiro não foi carregado.');
+      return false;
+    }
+
+    return polygons.some((polygon) => {
+      if (!polygon.length || !isPointInRing(lng, lat, polygon[0])) return false;
+      return !polygon.slice(1).some((hole) => isPointInRing(lng, lat, hole));
+    });
+  }
+
   function updateReportMunicipality(lat, lng) {
     const sequence = ++reportGeocodeSequence;
     const label = document.getElementById('reportLocationName');
@@ -32,6 +64,11 @@
   }
 
   function setReportLocation(lat, lng, shouldCenter = false) {
+    if (!isLocationWithinRio(lat, lng)) {
+      toast('Selecione um ponto dentro do estado do Rio de Janeiro.');
+      return false;
+    }
+
     const locInput = document.getElementById('reportLocation');
     if (locInput) locInput.value = `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
     updateReportMunicipality(lat, lng);
@@ -42,6 +79,12 @@
         reportMarker.bindPopup('Ponto do problema');
         reportMarker.on('dragend', () => {
           const pos = reportMarker.getLatLng();
+          if (!isLocationWithinRio(pos.lat, pos.lng)) {
+            const previousPosition = locInput.value.split(',').map(Number);
+            reportMarker.setLatLng(previousPosition);
+            toast('O ponto precisa ficar dentro do estado do Rio de Janeiro.');
+            return;
+          }
           setReportLocation(pos.lat, pos.lng);
         });
       } else {
@@ -75,11 +118,25 @@
       maxZoom: 19,
       attribution: '© OpenStreetMap'
     }).addTo(reportMap);
-  
+
+    L.geoJSON(window.UrbanEyeRioBoundary, {
+      interactive: false,
+      style: {
+        color: '#1769e0',
+        weight: 2,
+        fillColor: '#1769e0',
+        fillOpacity: 0.08
+      }
+    }).addTo(reportMap);
+
     reportMap.setMaxBounds(rioBounds);
   
     reportMap.on('click', event => {
       const { lat, lng } = event.latlng;
+      if (!isLocationWithinRio(lat, lng)) {
+        toast('Selecione um ponto dentro do estado do Rio de Janeiro.');
+        return;
+      }
       setReportLocation(lat, lng, true);
     });
   
@@ -100,12 +157,7 @@
   
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
-      const rioBounds = L.latLngBounds(
-        [-23.40, -44.90],
-        [-20.75, -40.95]
-      );
-  
-      if (!rioBounds.contains([latitude, longitude])) {
+      if (!isLocationWithinRio(latitude, longitude)) {
         toast('Sua localização está fora do Rio de Janeiro.');
         return;
       }

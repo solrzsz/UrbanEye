@@ -1191,6 +1191,12 @@ p {
   background: linear-gradient(135deg, #7fb2df, #274e76)
 }
 
+.city-rio {
+  background-image: url("../images/rio-de-janeiro.png");
+  background-position: center 48%;
+  background-size: cover;
+}
+
 .city:before {
   content: "";
   position: absolute;
