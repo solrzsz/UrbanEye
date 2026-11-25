@@ -679,7 +679,7 @@ function openProblemInWaze() {
   const rawLat = currentDetailProblem?.lat;
   const rawLng = currentDetailProblem?.lng;
   if (rawLat === null || rawLat === undefined || rawLng === null || rawLng === undefined
-      || String(rawLat).trim() === '' || String(rawLng).trim() === '') {
+    || String(rawLat).trim() === '' || String(rawLng).trim() === '') {
     toast('As coordenadas deste relato não estão disponíveis.');
     return;
   }

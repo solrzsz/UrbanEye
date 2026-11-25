@@ -42,7 +42,7 @@
         <button onclick="show('ranking')">Comunidade</button>
         <button onclick="show('profile')">Perfil</button>
         <button class="btn-report" onclick="requireLogin()">Reportar</button>
-        
+
       </div>
     </div>
   </header>
@@ -58,7 +58,8 @@
         <div>
           <div class="card">
             <div class="row">
-              <div class="avatar profile-avatar" id="profileAvatar" style="width:70px;height:70px;font-size:26px">V</div>
+              <div class="avatar profile-avatar" id="profileAvatar" style="width:70px;height:70px;font-size:26px">V
+              </div>
               <div>
                 <h2 id="profileName" style="margin:0">Visitante</h2>
                 <div id="profileMemberSince" class="muted small">Acesse sua conta para personalizar</div>
@@ -71,14 +72,18 @@
               </div>
               <div class="field">
                 <label for="profileAvatarInput">Foto do perfil</label>
-                <input id="profileAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" onchange="previewProfileAvatar(this)">
+                <input id="profileAvatarInput" type="file" accept="image/jpeg,image/png,image/webp"
+                  onchange="previewProfileAvatar(this)">
                 <div class="small muted">JPG, PNG ou WebP · até 5 MB</div>
               </div>
-              <button id="saveProfileButton" type="button" class="btn secondary" onclick="saveProfile()">Salvar perfil</button>
+              <button id="saveProfileButton" type="button" class="btn secondary" onclick="saveProfile()">Salvar
+                perfil</button>
             </div>
             <div class="auth-notice" data-guest-only style="margin-top:14px">
-              <span>Você está vendo dados de demonstração. Relatos publicados no modo visitante ficam apenas neste navegador.</span>
-              <button type="button" class="btn secondary" style="margin-top:10px" onclick="openLogin('profile.html')">Entrar na conta</button>
+              <span>Você está vendo dados de demonstração. Relatos publicados no modo visitante ficam apenas neste
+                navegador.</span>
+              <button type="button" class="btn secondary" style="margin-top:10px"
+                onclick="openLogin('profile.html')">Entrar na conta</button>
             </div>
           </div>
           <div class="statgrid">
@@ -109,7 +114,7 @@
             <button class="btn secondary" onclick="show('settings')" style="margin-bottom:10px">⚙ Configurações</button>
           </div>
         </div>
-        
+
         <div>
           <div class="card">
             <div class="between" style="margin-bottom:10px"><b>Meus relatos (Simulação API)</b><button class="small"

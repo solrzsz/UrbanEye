@@ -55,8 +55,10 @@
       <div class="card form-card">
         <div class="auth-notice" data-guest-only>
           <b>Modo visitante</b>
-          <span>Este relato será salvo apenas neste navegador e não será enviado ao servidor. Entre na conta para publicar para toda a comunidade.</span>
-          <button type="button" class="btn secondary" style="margin-top:10px;width:auto" onclick="openLogin('report.html')">Entrar na conta</button>
+          <span>Este relato será salvo apenas neste navegador e não será enviado ao servidor. Entre na conta para
+            publicar para toda a comunidade.</span>
+          <button type="button" class="btn secondary" style="margin-top:10px;width:auto"
+            onclick="openLogin('report.html')">Entrar na conta</button>
         </div>
         <h2 style="margin:0 0 14px">O que aconteceu?</h2>
         <div class="field"><label>Categoria</label><select id="reportCategory">
@@ -73,7 +75,9 @@
             <button type="button" class="btn secondary" onclick="locateUserForReport()">Usar minha localização</button>
           </div>
         </div>
-        <div class="field"><label>Coordenadas</label><input id="reportLocation" value="-22.7858, -43.3116" readonly><div id="reportLocationName" class="small muted" aria-live="polite">Identificando município...</div></div>
+        <div class="field"><label>Coordenadas</label><input id="reportLocation" value="-22.7858, -43.3116" readonly>
+          <div id="reportLocationName" class="small muted" aria-live="polite">Identificando município...</div>
+        </div>
         <div class="field"><label>Descrição</label><textarea id="reportDescription"
             placeholder="Descreva o problema e como ele afeta a região..."></textarea></div>
         <div class="field">
@@ -101,6 +105,8 @@
         </div>
         <p class="small muted">A localização será usada para posicionar o problema no mapa. Evite informar dados
           pessoais na descrição.</p>
+        <p class="small muted">Se for tirar uma foto na horizontal, desbloqueie a orientação do dispositivo e gire-o.
+        </p>
         <button class="btn" onclick="sendReport()" id="btnSubmitReport">PUBLICAR RELATO</button>
       </div>
 

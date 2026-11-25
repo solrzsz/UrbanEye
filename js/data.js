@@ -252,7 +252,7 @@ window.UrbanAPI = {
             console.error('Erro ao buscar seus relatos:', error);
             return [];
         }
-        
+
     },
 
     async deleteProblem(reportId) {

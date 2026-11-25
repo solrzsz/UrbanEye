@@ -86,12 +86,15 @@
         </div>
         <div class="map-main">
           <div class="chips"><button class="chip on" onclick="filterChip(this)">Todos</button><button class="chip"
-              onclick="filterChip(this)">Buracos</button><button class="chip" onclick="filterChip(this)">Iluminação</button><button class="chip" onclick="filterChip(this)">Enchentes</button><button
-              class="chip" onclick="filterChip(this)">Segurança</button></div>
+              onclick="filterChip(this)">Buracos</button><button class="chip"
+              onclick="filterChip(this)">Iluminação</button><button class="chip"
+              onclick="filterChip(this)">Enchentes</button><button class="chip"
+              onclick="filterChip(this)">Segurança</button></div>
           <div class="map" style="background:var(--card)">
             <div id="loadingMap"
               style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;background:var(--bg)">
-              <b>Carregando API...</b></div>
+              <b>Carregando API...</b>
+            </div>
             <div id="realMap" style="position:absolute;inset:0;z-index:1"></div>
             <div class="mapbox">
               <div class="between"><b>Mapa de problemas</b><span id="mapCount" class="small muted">...</span></div>
