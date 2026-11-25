@@ -11,7 +11,7 @@
   window.urbaneyeSupabaseEnabled = hasRealSupabaseConfig;
 
   if (!window.supabase) {
-    console.warn('Supabase JS SDK não foi carregado. Inclua o script do Supabase antes de app.js.');
+    console.warn('Supabase JS SDK não foi carregado. Inclua o script do Supabase antes dos scripts do aplicativo.');
     window.supabaseClient = null;
     return;
   }

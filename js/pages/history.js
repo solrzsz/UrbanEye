@@ -1,0 +1,1 @@
+onAppReady(() => renderHistory('historyBox'));

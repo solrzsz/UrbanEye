@@ -1,0 +1,1 @@
+onAppReady(() => window.UrbanRanking?.init());

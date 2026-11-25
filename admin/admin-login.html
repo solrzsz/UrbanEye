@@ -17,7 +17,8 @@
   <script defer src="../js/supabase.js"></script>
   <script defer src="../js/auth-guard.js"></script>
   <script defer src="../js/data.js"></script>
-  <script defer src="../js/app.js"></script>
+    <script defer src="../js/common.js"></script>
+  <script defer src="../js/pages/admin-login.js"></script>
 </head>
 <body>
   <main class="admin-auth-shell">
@@ -46,7 +47,7 @@
         <p class="muted">Acesse o painel da sua organização.</p>
         <p id="adminSessionNotice" class="admin-session-notice" role="status" hidden></p>
       </div>
-      <form class="admin-auth-form" onsubmit="event.preventDefault(); adminLogin();">
+      <form class="admin-auth-form" id="adminLoginForm">
         <div class="field admin-field">
           <label for="adminEmail">E-mail institucional</label>
           <div class="admin-input-wrap">
