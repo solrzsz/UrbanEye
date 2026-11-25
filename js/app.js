@@ -198,7 +198,7 @@ async function renderNotifications() {
     });
   } catch (error) {
     console.error('Não foi possível carregar as notificações:', error);
-    list.textContent = 'Não foi possível carregar notificações. Confira se a migração supabase_notifications.sql foi executada no projeto Supabase.';
+    list.textContent = 'Não foi possível carregar notificações. Confira se a migração database/supabase_notifications.sql foi executada no projeto Supabase.';
   }
 }
 
@@ -254,9 +254,40 @@ async function shareUrbanEye() {
 }
 
 
+const APP_ROUTES = Object.freeze({
+  home: 'index.html',
+  map: 'map/map.html',
+  detail: 'reports/detail.html',
+  filters: 'map/filters.html',
+  ranking: 'community/ranking.html',
+  stats: 'community/stats.html',
+  integrations: 'integrations/integrations.html',
+  help: 'support/help.html',
+  profile: 'account/profile.html',
+  settings: 'account/settings.html',
+  history: 'reports/history.html',
+  notifications: 'account/notifications.html',
+  report: 'reports/report.html',
+  login: 'auth/login.html',
+  register: 'auth/register.html',
+  'admin-login': 'admin/admin-login.html',
+  'admin-dashboard': 'admin/admin-dashboard.html'
+});
+
+function resolveAppRoute(target) {
+  const pathname = window.location.pathname.toLowerCase();
+  const isRootDocument = pathname.endsWith('/index.html') || !pathname.endsWith('.html');
+  const appRoot = new URL(isRootDocument ? './' : '../', window.location.href);
+  return new URL(target, appRoot).href;
+}
+
 function show(id) {
-  const target = id === 'home' ? 'index.html' : id + '.html';
-  window.location.href = target;
+  const target = APP_ROUTES[id];
+  if (!target) {
+    console.error(`Rota UrbanEye desconhecida: ${id}`);
+    return;
+  }
+  window.location.href = resolveAppRoute(target);
 }
 
 function escapeHTML(value) {
@@ -307,7 +338,7 @@ function initLoginPage() {
     else if (reason === 'auth-required') message = 'Entre na sua conta para publicar e acompanhar seus relatos.';
     else if (reason === 'guest-mode') message = 'Você está no modo visitante. Entre para salvar seus dados na conta.';
 
-    if (redirect && redirect !== 'map.html') {
+    if (redirect && redirect !== 'map/map.html') {
       message = (message ? message + ' ' : '') + 'Depois do login você volta para a página que estava acessando.';
     }
 
@@ -363,8 +394,8 @@ async function login() {
 
     toast('Login realizado com sucesso!');
     setTimeout(() => {
-      const target = window.UrbanAuth ? window.UrbanAuth.getPostLoginRedirect() : 'map.html';
-      window.location.href = target;
+      const target = window.UrbanAuth ? window.UrbanAuth.getPostLoginRedirect() : 'map/map.html';
+      window.location.href = resolveAppRoute(target);
     }, 500);
   } catch (error) {
     console.error(error);
@@ -422,8 +453,8 @@ async function signup() {
       }
       toast('Conta criada com sucesso!');
       setTimeout(() => {
-        const target = window.UrbanAuth ? window.UrbanAuth.getPostLoginRedirect() : 'map.html';
-        window.location.href = target;
+        const target = window.UrbanAuth ? window.UrbanAuth.getPostLoginRedirect() : 'map/map.html';
+        window.location.href = resolveAppRoute(target);
       }, 500);
     } else {
       toast('Conta criada. Confirme seu e-mail para entrar.');
@@ -472,7 +503,7 @@ async function adminLogin() {
     if (!data?.session) throw new Error('Não foi possível iniciar a sessão institucional.');
 
     if (window.UrbanAuth) window.UrbanAuth.completeAuthentication(data.session);
-    window.location.href = 'admin-dashboard.html';
+    window.location.href = resolveAppRoute(APP_ROUTES['admin-dashboard']);
   } catch (error) {
     console.error('Erro no login institucional:', error);
     toast(error?.message || 'Não foi possível entrar no painel.');
@@ -508,7 +539,7 @@ async function redirectActiveInstitutionalSession() {
     if (error) throw error;
 
     if (isInstitutionalProfile(profile)) {
-      window.location.replace('admin-dashboard.html');
+      window.location.replace(resolveAppRoute(APP_ROUTES['admin-dashboard']));
       return;
     }
 
@@ -745,7 +776,7 @@ function saveAdminReportNote(reportId, note) {
 
 async function initAdminDashboard() {
   if (!window.UrbanAuth?.isAuthenticated()) {
-    window.location.replace('admin-login.html');
+    window.location.replace(resolveAppRoute(APP_ROUTES['admin-login']));
     return;
   }
 
@@ -1056,7 +1087,7 @@ function addInstitutionalAccessLinks() {
   if (desktopLinks && !desktopLinks.querySelector('.institutional-link')) {
     const link = document.createElement('a');
     link.className = 'institutional-link';
-    link.href = 'admin-login.html';
+    link.href = resolveAppRoute(APP_ROUTES['admin-login']);
     link.textContent = 'Área institucional';
     desktopLinks.insertBefore(link, desktopLinks.querySelector('.btn-report'));
   }
@@ -1067,7 +1098,7 @@ function addInstitutionalAccessLinks() {
     accessRow.className = 'institutional-access-mobile';
     const link = document.createElement('a');
     link.className = 'institutional-link top-institutional-link';
-    link.href = 'admin-login.html';
+    link.href = resolveAppRoute(APP_ROUTES['admin-login']);
     link.textContent = 'Área institucional';
     accessRow.appendChild(link);
     top.insertAdjacentElement('afterend', accessRow);

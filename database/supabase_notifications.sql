@@ -1,4 +1,4 @@
--- UrbanEye: persistent report-status notifications.
+-- Database migration: persistent report-status notifications.
 -- Run after supabase_sql_politicas.txt. Safe to run more than once.
 
 alter table public.profiles

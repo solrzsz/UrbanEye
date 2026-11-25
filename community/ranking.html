@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <meta name="theme-color" content="#1769e0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
   <title>Ranking de bairros · UrbanEye</title>
   <script>
     // Inicializa tema escuro imediatamente para evitar flash branco
@@ -20,13 +20,13 @@
     window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/supabase.js"></script>
-  <script defer src="js/auth-guard.js"></script>
+  <script defer src="../js/supabase.js"></script>
+  <script defer src="../js/auth-guard.js"></script>
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="js/data.js"></script>
-  <script defer src="js/bairros-rio.js"></script>
-  <script defer src="js/ranking.js"></script>
-  <script defer src="js/app.js"></script>
+  <script defer src="../js/data.js"></script>
+  <script defer src="../js/bairros-rio.js"></script>
+  <script defer src="../js/ranking.js"></script>
+  <script defer src="../js/app.js"></script>
 </head>
 
 <body>
@@ -35,7 +35,7 @@
   <header class="desktop-header">
     <div class="desktop-header-inner">
       <div class="logo-container" onclick="show('home')" style="cursor:pointer">
-        <img src="logo.png" class="app-logo" alt="Logo UrbanEye">
+        <img src="../images/logo.png" class="app-logo" alt="Logo UrbanEye">
         <div class="logo">Urban<span>Eye</span></div>
       </div>
       <div class="desktop-links">

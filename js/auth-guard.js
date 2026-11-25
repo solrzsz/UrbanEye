@@ -3,13 +3,16 @@
 
   const PAGE = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
   const GUEST_ONLY_PAGES = new Set(['login.html', 'register.html']);
+  const GUEST_ONLY_ROUTES = new Set(['auth/login.html', 'auth/register.html']);
+  const ADMIN_PAGE_NAMES = new Set(['admin-login.html', 'admin-dashboard.html']);
   const KNOWN_PAGES = new Set([
-    'index.html', 'map.html', 'detail.html', 'filters.html', 'ranking.html',
-    'stats.html', 'integrations.html', 'help.html', 'profile.html',
-    'settings.html', 'history.html', 'notifications.html', 'report.html',
-    'login.html', 'register.html', 'admin-login.html', 'admin-dashboard.html'
+    'index.html', 'map/map.html', 'reports/detail.html', 'map/filters.html',
+    'community/ranking.html', 'community/stats.html', 'integrations/integrations.html',
+    'support/help.html', 'account/profile.html', 'account/settings.html',
+    'reports/history.html', 'account/notifications.html', 'reports/report.html',
+    'auth/login.html', 'auth/register.html', 'admin/admin-login.html', 'admin/admin-dashboard.html'
   ]);
-  const REDIRECTABLE_PAGES = new Set([...KNOWN_PAGES].filter((page) => !GUEST_ONLY_PAGES.has(page)));
+  const REDIRECTABLE_PAGES = new Set([...KNOWN_PAGES].filter((page) => !GUEST_ONLY_ROUTES.has(page)));
 
   const AUTH_CACHE_KEY = 'urbaneye_auth_cache';
   const GUEST_KEY = 'urbaneye_guest';
@@ -117,7 +120,16 @@
   }
 
   function currentPageTarget() {
-    return PAGE + (window.location.search || '');
+    const folder = window.location.pathname.split('/').slice(-2, -1)[0].toLowerCase();
+    const page = PAGE === 'index.html' ? PAGE : `${folder}/${PAGE}`;
+    return page + (window.location.search || '');
+  }
+
+  function routeTarget(target) {
+    const pathname = window.location.pathname.toLowerCase();
+    const isRootDocument = pathname.endsWith('/index.html') || !pathname.endsWith('.html');
+    const appRoot = new URL(isRootDocument ? './' : '../', window.location.href);
+    return new URL(target, appRoot).href;
   }
 
   function loginUrl(reason, redirect) {
@@ -126,22 +138,22 @@
     if (target) params.set('redirect', target);
     if (reason) params.set('reason', reason);
     const query = params.toString();
-    return 'login.html' + (query ? '?' + query : '');
+    return 'auth/login.html' + (query ? '?' + query : '');
   }
 
   function getPostLoginRedirect() {
     const params = new URLSearchParams(window.location.search);
     const target = safeRedirect(params.get('redirect'));
-    if (!target) return 'map.html';
+    if (!target) return 'map/map.html';
     const file = target.split(/[?#]/)[0].toLowerCase();
-    if (GUEST_ONLY_PAGES.has(file)) return 'map.html';
+    if (GUEST_ONLY_ROUTES.has(file)) return 'map/map.html';
     return target;
   }
 
   function navigate(target) {
     if (!target) return;
     state.redirecting = true;
-    window.location.replace(target);
+    window.location.replace(routeTarget(target));
   }
 
   function applyAuthUI() {
@@ -259,7 +271,7 @@
     applyAuthUI();
 
     if (typeof window.toast === 'function') window.toast('Modo visitante encerrado.');
-    setTimeout(() => navigate('login.html'), 300);
+    setTimeout(() => navigate('auth/login.html'), 300);
   }
 
   function openLogin(redirect) {
@@ -268,10 +280,10 @@
 
   function requireLogin() {
     if (isAuthenticated() || isGuest()) {
-      navigate('report.html');
+      navigate('reports/report.html');
       return;
     }
-    navigate(loginUrl('auth-required', 'report.html'));
+    navigate(loginUrl('auth-required', 'reports/report.html'));
   }
 
   function requireAuthAction() {
@@ -306,7 +318,7 @@
     applyAuthUI();
 
     if (typeof window.toast === 'function') window.toast('Sessão encerrada.');
-    setTimeout(() => navigate('login.html'), 350);
+    setTimeout(() => navigate('auth/login.html'), 350);
   }
 
   function bindAuthChanges() {
@@ -347,7 +359,7 @@
     if (!GUEST_ONLY_PAGES.has(PAGE)) {
       if (PAGE === 'admin-login.html') return;
       if (PAGE === 'admin-dashboard.html') {
-        navigate('admin-login.html');
+        navigate('admin/admin-login.html');
         return;
       }
       navigate(loginUrl('login-required', currentPageTarget()));

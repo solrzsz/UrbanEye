@@ -1,4 +1,4 @@
--- UrbanEye: sanitize existing report colors and block unapproved values.
+-- Database migration: sanitize existing report colors and block unapproved values.
 -- Safe to run more than once.
 
 update public.reports

@@ -1,4 +1,4 @@
--- UrbanEye: habilitar conta institucional da prefeitura.
+-- Database script: habilitar conta institucional da prefeitura.
 -- Primeiro crie o usuário em Supabase > Authentication > Users.
 -- Substitua o e-mail abaixo pelo mesmo e-mail cadastrado no Supabase Auth.
 

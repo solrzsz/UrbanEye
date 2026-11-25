@@ -1,5 +1,5 @@
 -- =========================================================
--- UrbanEye - SQL completo para Supabase
+-- UrbanEye - SQL completo para Supabase (base de dados)
 -- =========================================================
 
 -- 0) Criar tabela de perfil do usuário para o auth.signUp

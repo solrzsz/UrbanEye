@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
   <title>UrbanEye</title>
   <script>
     // Inicializa tema escuro imediatamente para evitar flash branco
@@ -19,11 +19,11 @@
     window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/supabase.js"></script>
-  <script defer src="js/auth-guard.js"></script>
+  <script defer src="../js/supabase.js"></script>
+  <script defer src="../js/auth-guard.js"></script>
   <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script defer src="js/data.js"></script>
-  <script defer src="js/app.js"></script>
+  <script defer src="../js/data.js"></script>
+  <script defer src="../js/app.js"></script>
 </head>
 
 <body>
@@ -32,7 +32,7 @@
   <header class="desktop-header">
     <div class="desktop-header-inner">
       <div class="logo-container" onclick="show('home')" style="cursor:pointer">
-        <img src="logo.png" class="app-logo" alt="Logo">
+        <img src="../images/logo.png" class="app-logo" alt="Logo">
         <div class="logo">Urban<span>Eye</span></div>
       </div>
       <div class="desktop-links">
@@ -47,23 +47,36 @@
 
   <div class="app">
 
-    <section class="screen active" style="padding-bottom: 78px;">
+    <section class="screen active" style="padding-bottom: 20px;">
 
-      <div class="top"><button class="iconbtn" onclick="show('profile')">‹</button><b>Histórico</b><button
-          class="iconbtn desktop-hide" onclick="show('filters')">Filtros</button></div>
-      <div class="card form-card" id="historyBox">Carregando dados da API...</div>
+      <div class="top"><button class="iconbtn" onclick="show('map')">‹</button><b>Filtros</b><button class="iconbtn"
+          onclick="show('map')">×</button></div>
+      <div class="card form-card">
+        <h2 style="margin:0">Filtrar problemas</h2>
+        <div class="field"><label>Categoria</label><select id="filterCategory">
+            <option>Todas</option>
+            <option>Buracos</option>
+            <option>Iluminação</option>
+            <option>Enchentes</option>
+            <option>Segurança</option>
+          </select></div>
+        <div class="field"><label>Status</label><select id="filterStatus">
+            <option>Todos</option>
+            <option>Aberto</option>
+            <option>Em análise</option>
+            <option>Resolvido</option>
+          </select></div>
+        <div class="field"><label>Bairro</label><select id="filterBairro">
+            <option>Todos os bairros</option>
+            <option>Centro</option>
+            <option>25 de Agosto</option>
+            <option>Jardim Primavera</option>
+          </select></div><button class="btn" style="margin-top:15px"
+          onclick="applyFilters(); show('map')">APLICAR FILTROS</button>
+      </div>
 
     </section>
 
-
-    <div class="nav" id="nav">
-      <button onclick="show('home')">Início</button>
-      <button onclick="show('map')">Mapa</button>
-      <button onclick="show('integrations')">Parcerias</button>
-      <button class="plus" onclick="requireLogin()">+</button>
-      <button onclick="show('ranking')">Comunidade</button>
-      <button onclick="show('profile')">Perfil</button>
-    </div>
 
 
     <div id="toast" class="toast"></div>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
   <title>UrbanEye | Acesso Institucional</title>
   <script>
     const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
@@ -14,16 +14,16 @@
     window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/supabase.js"></script>
-  <script defer src="js/auth-guard.js"></script>
-  <script defer src="js/data.js"></script>
-  <script defer src="js/app.js"></script>
+  <script defer src="../js/supabase.js"></script>
+  <script defer src="../js/auth-guard.js"></script>
+  <script defer src="../js/data.js"></script>
+  <script defer src="../js/app.js"></script>
 </head>
 <body>
   <main class="admin-auth-shell">
     <section class="admin-auth-brand">
       <div class="logo-container">
-        <img src="logo.png" class="app-logo" alt="UrbanEye">
+        <img src="../images/logo.png" class="app-logo" alt="UrbanEye">
         <div class="logo">Urban<span>Eye</span></div>
       </div>
       <div class="admin-brand-content">
@@ -38,8 +38,8 @@
       <p class="admin-brand-footer">UrbanEye · Gestão pública responsável</p>
     </section>
     <section class="admin-auth-card">
-      <button class="iconbtn admin-back" type="button" onclick="window.location.href='login.html'">‹</button>
-      <div class="admin-auth-logo"><img src="logo.png" alt="UrbanEye"></div>
+      <button class="iconbtn admin-back" type="button" onclick="window.location.href='../auth/login.html'">‹</button>
+      <div class="admin-auth-logo"><img src="../images/logo.png" alt="UrbanEye"></div>
       <div class="admin-auth-heading">
         <span class="admin-kicker">PREFEITURA / ONG</span>
         <h2>Bem-vindo de volta</h2>
