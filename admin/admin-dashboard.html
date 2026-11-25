@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="stylesheet" href="../css/style.css">
+  <title>UrbanEye | Painel Institucional</title>
+  <script>
+    const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="../js/supabase.js"></script>
+  <script defer src="../js/auth-guard.js"></script>
+  <script defer src="../js/data.js"></script>
+  <script defer src="../js/app.js"></script>
+</head>
+
+<body>
+  <aside class="admin-sidebar">
+    <a class="admin-brand" href="admin-dashboard.html" aria-label="UrbanEye Administrativo">
+      <img src="../images/logo.png" class="app-logo" alt="">
+      <div class="logo">Urban<span>Eye</span></div>
+    </a>
+    <nav class="admin-nav" aria-label="Menu administrativo">
+      <button class="active" type="button" data-admin-view="dashboard"><span>▦</span>Visão geral</button>
+      <button type="button" data-admin-view="reports"><span>≡</span>Relatos <b id="adminNavCount">0</b></button>
+      <button type="button" data-admin-view="map"><span>⌖</span>Mapa operacional</button>
+      <button type="button" data-admin-view="team"><span>♙</span>Equipe</button>
+    </nav>
+    <div class="admin-sidebar-bottom">
+      <button type="button"
+        onclick="toggleDarkMode(document.documentElement.dataset.theme !== 'dark')"><span>◐</span>Alternar tema</button>
+      <button type="button"
+        onclick="window.location.href='../account/settings.html'"><span>⚙</span>Configurações</button>
+    </div>
+  </aside>
+
+  <main class="admin-dashboard">
+    <header class="admin-topbar">
+      <div>
+        <span class="admin-kicker">CENTRO DE OPERAÇÕES</span>
+        <h1 id="adminPageTitle">Visão geral</h1>
+      </div>
+      <div class="admin-account">
+        <button class="admin-notifications" type="button" aria-label="Ir para relatos que precisam de atenção"
+          onclick="scrollAdminNotifications()">
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+          </svg>
+          <span id="adminAlertCount">0</span>
+        </button>
+        <div><span class="small muted">Conta institucional</span><b data-admin-name>Carregando...</b></div>
+        <button class="btn ghost" type="button" data-logout-button onclick="logout()">Sair</button>
+      </div>
+    </header>
+
+    <section id="adminAccessDenied" class="card admin-denied" hidden>
+      <h1>Acesso não autorizado</h1>
+      <p class="muted">Esta conta não está vinculada a uma prefeitura, ONG ou equipe operacional.</p>
+      <button id="adminRetryAccess" class="btn secondary" type="button" onclick="window.location.reload()" hidden>Tentar
+        novamente</button>
+      <button class="btn secondary" type="button" onclick="logout()">Sair da conta</button>
+    </section>
+
+    <section id="adminDashboardContent" hidden>
+      <p id="adminLoadNotice" class="admin-load-notice" role="status" hidden></p>
+      <div class="admin-content" data-admin-panel="dashboard">
+        <div class="admin-metrics">
+          <article class="admin-metric">
+            <div class="metric-icon blue">↗</div>
+            <div><span>Total de relatos</span><b id="adminTotal">0</b><small>Base atualizada</small></div>
+          </article>
+          <article class="admin-metric">
+            <div class="metric-icon red">!</div>
+            <div><span>Em aberto</span><b id="adminOpen">0</b><small>Exigem triagem</small></div>
+          </article>
+          <article class="admin-metric">
+            <div class="metric-icon amber">◷</div>
+            <div><span>Em análise</span><b id="adminAnalysis">0</b><small>Em atendimento</small></div>
+          </article>
+          <article class="admin-metric">
+            <div class="metric-icon green">✓</div>
+            <div><span>Resolvidos</span><b id="adminResolved">0</b><small id="adminResolutionRate">0% concluído</small>
+            </div>
+          </article>
+        </div>
+
+        <div class="admin-overview-grid">
+          <section class="admin-panel">
+            <div class="admin-panel-heading">
+              <div><span class="admin-kicker">ACOMPANHAMENTO</span>
+                <h2>Relatos por situação</h2>
+              </div>
+            </div>
+            <div id="adminStatusChart" class="admin-status-chart"></div>
+          </section>
+          <section class="admin-panel">
+            <div class="admin-panel-heading">
+              <div><span class="admin-kicker">ATIVIDADE</span>
+                <h2>Últimas ocorrências</h2>
+              </div>
+            </div>
+            <div id="adminRecentList" class="admin-recent-list"></div>
+          </section>
+        </div>
+
+        <section class="admin-panel" id="adminNotifications">
+          <div class="admin-panel-heading">
+            <div><span class="admin-kicker">PRIORIDADE</span>
+              <h2>Fila operacional</h2>
+            </div><button class="btn secondary" type="button" onclick="showAdminView('reports')">Ver todos</button>
+          </div>
+          <div id="adminPriorityList" class="admin-reports compact"></div>
+        </section>
+      </div>
+
+      <div class="admin-content" data-admin-panel="reports" hidden>
+        <div class="admin-toolbar">
+          <input id="adminSearch" type="search" placeholder="Buscar por tipo, bairro ou descrição"
+            aria-label="Buscar relatos">
+          <select id="adminStatusFilter" aria-label="Filtrar por situação">
+            <option>Todos</option>
+            <option>Aberto</option>
+            <option>Em análise</option>
+            <option>Resolvido</option>
+          </select>
+          <select id="adminCategoryFilter" aria-label="Filtrar por categoria">
+            <option value="Todos">Todas as categorias</option>
+          </select>
+          <button class="btn secondary" type="button" onclick="exportAdminReports()">Exportar CSV</button>
+          <button class="admin-refresh" type="button" onclick="loadAdminReports()"
+            aria-label="Atualizar relatos">↻</button>
+        </div>
+        <div id="adminReportsList" class="admin-reports"></div>
+      </div>
+
+      <div class="admin-content" data-admin-panel="map" hidden>
+        <section class="admin-panel admin-placeholder">
+          <span class="admin-placeholder-icon">⌖</span>
+          <h2>Mapa operacional</h2>
+          <p class="muted">Consulte a localização dos relatos e identifique regiões que precisam de atendimento.</p>
+          <button class="btn" type="button" onclick="window.location.href='../map/map.html'">Abrir mapa</button>
+        </section>
+      </div>
+
+      <div class="admin-content" data-admin-panel="team" hidden>
+        <section class="admin-panel admin-placeholder">
+          <span class="admin-placeholder-icon">♙</span>
+          <h2>Gestão da equipe</h2>
+          <p class="muted">Atribua os relatos às equipes disponíveis na lista de atendimento. As atribuições ficam
+            salvas neste navegador.</p>
+          <button class="btn" type="button" onclick="showAdminView('reports')">Abrir fila de relatos</button>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="adminReportDialog" class="admin-report-dialog">
+    <div class="admin-dialog-shell">
+      <button class="admin-dialog-close" type="button" aria-label="Fechar" onclick="closeAdminReportDialog()">×</button>
+      <div id="adminDialogContent"></div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast"></div>
+</body>
+
+</html>

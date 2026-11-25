@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="theme-color" content="#1769e0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <title>Ranking de bairros · UrbanEye</title>
+  <script>
+    // Inicializa tema escuro imediatamente para evitar flash branco
+    const savedTheme = localStorage.getItem('urbaneye_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.classList.add('auth-checking');
+    setTimeout(() => document.documentElement.classList.remove('auth-checking'), 5000);
+  </script>
+  <script>
+    window.urbaneyeSupabaseUrl = window.urbaneyeSupabaseUrl || 'https://swmgwteywwtaggrznbkj.supabase.co';
+    window.urbaneyeSupabaseAnonKey = window.urbaneyeSupabaseAnonKey || 'sb_publishable_0pmwIcDcS1P30gNZ3f6-3Q_MpUzhvjU';
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="../js/supabase.js"></script>
+  <script defer src="../js/auth-guard.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="../js/data.js"></script>
+  <script defer src="../js/bairros-rio.js"></script>
+  <script defer src="../js/ranking.js"></script>
+  <script defer src="../js/app.js"></script>
+</head>
+
+<body>
+
+  <!-- Header Desktop Top Nav -->
+  <header class="desktop-header">
+    <div class="desktop-header-inner">
+      <div class="logo-container" onclick="show('home')" style="cursor:pointer">
+        <img src="../images/logo.png" class="app-logo" alt="Logo UrbanEye">
+        <div class="logo">Urban<span>Eye</span></div>
+      </div>
+      <div class="desktop-links">
+        <button onclick="show('home')">Início</button>
+        <button onclick="show('map')">Mapa</button>
+        <button onclick="show('integrations')">Parcerias</button>
+        <button onclick="show('ranking')">Comunidade</button>
+        <button onclick="show('profile')">Perfil</button>
+        <button class="btn-report" onclick="requireLogin()">Reportar</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+
+    <section class="screen active" style="padding-bottom: 78px;">
+      <div class="top">
+        <div class="logo">Comunidade</div>
+        <button class="iconbtn ranking-top-action" onclick="show('stats')" aria-label="Ver estatísticas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+          </svg>
+          <span>Estatísticas</span>
+        </button>
+      </div>
+
+      <main class="ranking-shell">
+        <div class="card ranking-card">
+          <div class="ranking-heading">
+            <div class="ranking-heading-copy">
+              <span class="ranking-eyebrow">
+                <span class="ranking-eyebrow-dot" aria-hidden="true"></span>
+                UrbanEye · Comunidade
+              </span>
+              <h1 class="ranking-title">Ranking de bairros</h1>
+              <p class="ranking-subtitle muted">
+                Os 10 bairros com mais contribuições da comunidade no Rio de Janeiro.
+                Em caso de empate, vale a ordem alfabética.
+              </p>
+            </div>
+            <button class="btn secondary ranking-refresh" id="refreshNeighborhoodRanking" type="button"
+              onclick="refreshNeighborhoodRanking()" aria-label="Atualizar ranking de bairros">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+                <path d="M20 4v7h-7" />
+              </svg>
+              <span class="ranking-refresh-label">Atualizar</span>
+            </button>
+          </div>
+
+          <div class="ranking-stats" id="rankingStats" aria-live="polite">
+            <p class="muted">Carregando contribuições...</p>
+          </div>
+
+          <div class="ranking-content">
+            <div id="rankingPodium" class="ranking-podium" aria-live="polite"></div>
+
+            <div class="ranking-list-title" id="rankingListTitle" hidden>Outras posições</div>
+            <div id="neighborhoodRanking" class="ranking-list" role="list" aria-live="polite" aria-busy="true"
+              aria-label="Ranking dos bairros com mais contribuições">
+              <p class="muted">Carregando ranking...</p>
+            </div>
+
+            <div id="rankingNotice" class="ranking-notice" role="status" hidden></div>
+          </div>
+
+          <footer class="ranking-footer" id="rankingFooter">
+            <span class="ranking-live-dot" aria-hidden="true"></span>
+            <span id="rankingUpdatedAt">Atualizando automaticamente…</span>
+          </footer>
+        </div>
+      </main>
+    </section>
+
+
+    <div class="nav" id="nav">
+      <button onclick="show('home')">Início</button>
+      <button onclick="show('map')">Mapa</button>
+      <button onclick="show('integrations')">Parcerias</button>
+      <button class="plus" onclick="requireLogin()">+</button>
+      <button onclick="show('ranking')">Comunidade</button>
+      <button onclick="show('profile')">Perfil</button>
+    </div>
+
+
+    <div id="toast" class="toast"></div>
+  </div>
+
+
+</body>
+
+</html>

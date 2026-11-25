@@ -65,7 +65,13 @@
                 <div id="profileMemberSince" class="muted small">Acesse sua conta para personalizar</div>
               </div>
             </div>
+<<<<<<< Updated upstream:profile.html
             <div class="profile-editor" data-auth-only hidden>
+=======
+            <button id="editProfileButton" type="button" class="btn secondary" data-auth-only hidden
+              style="margin-top:14px" onclick="openProfileEditor()">Editar perfil</button>
+            <div id="profileEditor" class="profile-editor" hidden>
+>>>>>>> Stashed changes:account/profile.html
               <div class="field">
                 <label for="profileNameInput">Nome</label>
                 <input id="profileNameInput" type="text" maxlength="80" autocomplete="name" placeholder="Seu nome">
@@ -76,14 +82,26 @@
                   onchange="previewProfileAvatar(this)">
                 <div class="small muted">JPG, PNG ou WebP · até 5 MB</div>
               </div>
+<<<<<<< Updated upstream:profile.html
               <button id="saveProfileButton" type="button" class="btn secondary" onclick="saveProfile()">Salvar
                 perfil</button>
+=======
+              <div class="between">
+                <button id="saveProfileButton" type="button" class="btn secondary" onclick="saveProfile()">Salvar
+                  perfil</button>
+                <button type="button" class="btn secondary" onclick="closeProfileEditor()">Cancelar</button>
+              </div>
+>>>>>>> Stashed changes:account/profile.html
             </div>
             <div class="auth-notice" data-guest-only style="margin-top:14px">
               <span>Você está vendo dados de demonstração. Relatos publicados no modo visitante ficam apenas neste
                 navegador.</span>
               <button type="button" class="btn secondary" style="margin-top:10px"
+<<<<<<< Updated upstream:profile.html
                 onclick="openLogin('profile.html')">Entrar na conta</button>
+=======
+                onclick="openLogin('account/profile.html')">Entrar na conta</button>
+>>>>>>> Stashed changes:account/profile.html
             </div>
           </div>
           <div class="statgrid">

@@ -51,6 +51,7 @@
     <section class="screen active" style="padding-bottom: 78px;">
 
       <div class="top"><button class="iconbtn" onclick="show('home')">‹</button><b>Notificações</b><button
+<<<<<<< Updated upstream:notifications.html
           class="iconbtn" onclick="toast('Tudo marcado como lido')">Marcar como lidas</button></div>
       <div class="card form-card">
         <div class="auth-notice" data-guest-only>
@@ -73,6 +74,16 @@
           <div><b>Você ganhou pontos!</b>
             <p class="small muted">Sua participação ajudou a comunidade.</p>
           </div>
+=======
+          id="markNotificationsRead" class="iconbtn" onclick="markNotificationsRead()" hidden>Marcar como lidas</button>
+      </div>
+      <div class="card form-card">
+        <div class="auth-notice" data-guest-only>
+          <b>Modo visitante</b>
+          <span>Entre na sua conta para receber alertas quando a situação dos seus relatos mudar.</span>
+          <button type="button" class="btn secondary" style="margin-top:10px;width:auto"
+            onclick="openLogin('account/notifications.html')">Entrar na conta</button>
+>>>>>>> Stashed changes:account/notifications.html
         </div>
       </div>
 
