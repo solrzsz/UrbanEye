@@ -139,6 +139,16 @@
       }
       setReportLocation(lat, lng, true);
     });
+
+    const descriptionInput = document.getElementById('reportDescription');
+    descriptionInput?.addEventListener('input', () => {
+      if (!window.validateProblemDescription || !descriptionInput.value.trim()) {
+        descriptionInput.removeAttribute('aria-invalid');
+        return;
+      }
+      const validation = validateProblemDescription(descriptionInput.value);
+      descriptionInput.setAttribute('aria-invalid', String(!validation.valid));
+    });
   
     setReportLocation(-22.7858, -43.3116);
   }
@@ -372,6 +382,19 @@
     const cat = document.getElementById('reportCategory').value;
     const desc = document.getElementById('reportDescription').value.trim();
     if (!desc) { toast('Descreva o problema antes de publicar.'); return }
+    if (!capturedPhoto) {
+      toast('Adicione uma foto do problema antes de publicar.');
+      document.getElementById('cameraPlaceholder')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (window.validateProblemDescription) {
+      const descriptionValidation = validateProblemDescription(desc);
+      if (!descriptionValidation.valid) {
+        toast(descriptionValidation.message);
+        document.getElementById('reportDescription')?.focus();
+        return;
+      }
+    }
   
     const isAuthenticated = !!(window.UrbanAuth && window.UrbanAuth.isAuthenticated());
     const btn = document.getElementById('btnSubmitReport');

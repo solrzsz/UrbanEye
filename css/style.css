@@ -3068,6 +3068,16 @@ body:has(.admin-auth-shell) {
 .admin-placeholder p { max-width: 470px; margin: 4px 0 18px; }
 .admin-placeholder-icon { width: 68px; height: 68px; display: grid; place-items: center; border-radius: 18px; background: rgba(23,105,224,.10); color: var(--primary); font-size: 32px; }
 
+.required-mark {
+  color: var(--danger);
+  font-weight: 900;
+}
+
+textarea[aria-invalid="true"] {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.10);
+}
+
 .admin-clear-all,
 .admin-delete-report {
   border: 1px solid rgba(229, 57, 53, 0.28) !important;

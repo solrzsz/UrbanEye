@@ -81,9 +81,10 @@
           <div id="reportLocationName" class="small muted" aria-live="polite">Identificando município...</div>
         </div>
         <div class="field"><label>Descrição</label><textarea id="reportDescription"
+            maxlength="2000" required
             placeholder="Descreva o problema e como ele afeta a região..."></textarea></div>
         <div class="field">
-          <label>Foto do problema</label>
+          <label>Foto do problema <span class="required-mark">*</span></label>
           <div class="camera-box">
             <video id="cameraPreview" autoplay playsinline muted style="display:none"></video>
             <img id="photoPreview" alt="Prévia da foto" style="display:none">

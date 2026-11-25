@@ -163,6 +163,14 @@
       descriptionInput?.focus();
       return;
     }
+    if (window.validateProblemDescription) {
+      const descriptionValidation = validateProblemDescription(description);
+      if (!descriptionValidation.valid) {
+        toast(descriptionValidation.message);
+        descriptionInput?.focus();
+        return;
+      }
+    }
   
     if (button) {
       button.disabled = true;

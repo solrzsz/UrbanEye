@@ -224,7 +224,7 @@ async function identifyLocation(lat, lng) {
       const address = result.address || {};
       const city = address.city || address.town || address.village || address.municipality || address.county;
       const state = address.state;
-      const bairro = address.neighbourhood || address.suburb || address.quarter || address.residential || address.city_district || null;
+      const bairro = address.suburb || address.neighbourhood || address.quarter || address.residential || address.city_district || null;
       const municipality = city ? [city, state].filter(Boolean).join(', ') : null;
       const location = {
         bairro,

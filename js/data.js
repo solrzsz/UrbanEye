@@ -1,9 +1,9 @@
 const defaultProblems = [
-    { id: 1, lat: -22.7858, lng: -43.3116, cat: 'Buraco na rua', status: 'Em análise', bairro: 'Centro', desc: 'Buraco grande ocupando parte da pista.', color: '#e53935' },
-    { id: 2, lat: -22.7888, lng: -43.3040, cat: 'Falta de iluminação', status: 'Aberto', bairro: 'Jardim Primavera', desc: 'Poste sem iluminação durante a noite.', color: '#f5a623' },
-    { id: 3, lat: -22.7920, lng: -43.3180, cat: 'Enchente', status: 'Aberto', bairro: '25 de Agosto', desc: 'Ponto de alagamento em dias de chuva.', color: '#1769e0' },
-    { id: 4, lat: -22.7810, lng: -43.3188, cat: 'Falta de segurança', status: 'Resolvido', bairro: 'Centro', desc: 'Área com pouca iluminação e risco relatado.', color: '#22a06b' },
-    { id: 5, lat: -22.7898, lng: -43.3140, cat: 'Buraco na rua', status: 'Aberto', bairro: 'Jardim Primavera', desc: 'Buraco próximo à calçada.', color: '#e53935' }
+    { id: 1, lat: -22.7858, lng: -43.3116, cat: 'Buraco na rua', status: 'Em análise', bairro: 'Centro', desc: 'Buraco grande ocupando parte da pista.', color: '#e53935', municipality: 'Duque de Caxias, Rio de Janeiro' },
+    { id: 2, lat: -22.7888, lng: -43.3040, cat: 'Falta de iluminação', status: 'Aberto', bairro: 'Jardim 25 de Agosto', desc: 'Poste sem iluminação durante a noite.', color: '#f5a623', municipality: 'Duque de Caxias, Rio de Janeiro' },
+    { id: 3, lat: -22.7920, lng: -43.3180, cat: 'Enchente', status: 'Aberto', bairro: 'Centro', desc: 'Ponto de alagamento em dias de chuva.', color: '#1769e0', municipality: 'Duque de Caxias, Rio de Janeiro' },
+    { id: 4, lat: -22.7810, lng: -43.3188, cat: 'Falta de segurança', status: 'Resolvido', bairro: 'Centenário', desc: 'Área com pouca iluminação e risco relatado.', color: '#22a06b', municipality: 'Duque de Caxias, Rio de Janeiro' },
+    { id: 5, lat: -22.7898, lng: -43.3140, cat: 'Buraco na rua', status: 'Aberto', bairro: 'Centro', desc: 'Buraco próximo à calçada.', color: '#e53935', municipality: 'Duque de Caxias, Rio de Janeiro' }
 ];
 
 const GUEST_REPORTS_KEY = 'urbaneye_guest_reports';
@@ -78,8 +78,29 @@ function normalizeProblemStatus(status) {
     return value;
 }
 
+function normalizeNeighborhoodByCoordinates(lat, lng) {
+    const coordinates = [
+        { lat: -22.7858, lng: -43.3116, bairro: 'Centro' },
+        { lat: -22.7888, lng: -43.3040, bairro: 'Jardim 25 de Agosto' },
+        { lat: -22.7920, lng: -43.3180, bairro: 'Centro' },
+        { lat: -22.7810, lng: -43.3188, bairro: 'Centenário' },
+        { lat: -22.7898, lng: -43.3140, bairro: 'Centro' }
+    ];
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    const match = coordinates.find((item) =>
+        Math.abs(item.lat - latitude) < 0.0005 &&
+        Math.abs(item.lng - longitude) < 0.0005
+    );
+    return match?.bairro || null;
+}
+
 function normalizeProblemRow(row) {
     if (!row) return null;
+    const lat = Number(row.lat);
+    const lng = Number(row.lng);
+    const correctedBairro = normalizeNeighborhoodByCoordinates(lat, lng);
     return {
         ...row,
         id: row.id,
@@ -90,7 +111,7 @@ function normalizeProblemRow(row) {
         lng: Number(row.lng),
         color: normalizeProblemColor(row.color),
         photo: row.photo_url || row.photo || null,
-        bairro: row.bairro || row.neighborhood || null,
+        bairro: correctedBairro || row.bairro || row.neighborhood || null,
         municipality: row.municipality || null,
         confirmation_count: Number(row.confirmation_count || 0)
     };
@@ -109,6 +130,51 @@ function normalizeProblemPayload(problem) {
         photo_url: problem.photo || null
     };
 }
+
+function validateProblemDescription(description) {
+    const normalizedDescription = String(description || '').trim();
+    if (!normalizedDescription) {
+        return { valid: false, message: 'Descreva o problema antes de publicar.' };
+    }
+    if (normalizedDescription.length > 2000) {
+        return { valid: false, message: 'A descrição deve ter no máximo 2000 caracteres.' };
+    }
+
+    const normalized = normalizedDescription
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[0]/g, 'o')
+        .replace(/[1!]/g, 'i')
+        .replace(/[3]/g, 'e')
+        .replace(/[4@]/g, 'a')
+        .replace(/[$]/g, 's')
+        .replace(/[^a-z\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const bannedWords = [
+        'porra', 'caralho', 'caralho', 'carai', 'bosta', 'merda', 'puta',
+        'fdp', 'foda', 'foder', 'cacete', 'desgraca', 'viado', 'buceta',
+        'babaca', 'otario', 'otaria', 'idiota', 'filha da puta'
+    ];
+    const words = normalized.split(' ');
+    const compact = normalized.replace(/\s/g, '');
+    const found = bannedWords.some((word) => {
+        const normalizedWord = word.replace(/\s/g, '');
+        return words.includes(normalizedWord) || compact.includes(normalizedWord);
+    });
+
+    if (found) {
+        return {
+            valid: false,
+            message: 'A descrição contém linguagem inadequada. Remova xingamentos ou palavras de baixo calão.'
+        };
+    }
+    return { valid: true, message: '' };
+}
+
+window.validateProblemDescription = validateProblemDescription;
 
 function readGuestReports() {
     try {
@@ -595,6 +661,10 @@ window.UrbanAPI = {
     },
 
     async addProblem(problem) {
+        const descriptionValidation = validateProblemDescription(problem.desc);
+        if (!descriptionValidation.valid) throw new Error(descriptionValidation.message);
+        if (!problem.photo) throw new Error('Adicione uma foto do problema antes de publicar.');
+
         if (!isAuthenticatedNow()) {
             const report = normalizeProblemRow({
                 id: 'guest-' + Date.now(),
@@ -769,6 +839,10 @@ window.UrbanAPI = {
         }
         if (!normalizedDescription || normalizedDescription.length > 2000) {
             throw new Error('A descrição deve ter entre 1 e 2000 caracteres.');
+        }
+        const descriptionValidation = validateProblemDescription(normalizedDescription);
+        if (!descriptionValidation.valid) {
+            throw new Error(descriptionValidation.message);
         }
         if (!isAuthenticatedNow()) {
             const reports = readGuestReports();
