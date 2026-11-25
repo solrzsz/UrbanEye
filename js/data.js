@@ -329,6 +329,26 @@ window.UrbanAPI = {
         return deleted;
     },
 
+    async deleteProblemAsAdmin(reportId) {
+        if (!useSupabaseData()) {
+            const reports = readGuestReports();
+            const remaining = reports.filter(report => String(report.id) !== String(reportId));
+            if (remaining.length === reports.length) return false;
+            return writeGuestReports(remaining);
+        }
+
+        const { data, error } = await window.supabaseClient
+            .from('reports')
+            .delete()
+            .eq('id', reportId)
+            .select('id');
+
+        if (error) throw error;
+        const deleted = !!data?.length;
+        if (deleted) invalidateCurrentUserCache();
+        return deleted;
+    },
+
     async getProfileData() {
         if (!isAuthenticatedNow()) {
             const reports = await this.getMyReports();

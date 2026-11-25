@@ -18,6 +18,7 @@
     const titles = { dashboard: 'Visão geral', reports: 'Gestão de relatos', map: 'Mapa operacional', team: 'Equipe' };
     const title = document.getElementById('adminPageTitle');
     if (title) title.textContent = titles[selected];
+    if (selected === 'team') renderAdminTeams();
   }
 
   function scrollAdminNotifications() {
@@ -47,11 +48,87 @@
       const assignments = JSON.parse(localStorage.getItem('urbaneye_admin_assignments') || '{}');
       assignments[String(reportId)] = assignee;
       localStorage.setItem('urbaneye_admin_assignments', JSON.stringify(assignments));
+      renderAdminTeams();
       return true;
     } catch (error) {
       console.error('Não foi possível salvar a atribuição local:', error);
       toast('Não foi possível salvar a atribuição neste navegador.');
       return false;
+    }
+  }
+
+  function removeAdminReportMetadata(reportId) {
+    try {
+      const assignments = JSON.parse(localStorage.getItem('urbaneye_admin_assignments') || '{}');
+      delete assignments[String(reportId)];
+      localStorage.setItem('urbaneye_admin_assignments', JSON.stringify(assignments));
+    } catch (error) {
+      console.warn('Não foi possível remover a atribuição:', error);
+    }
+    try {
+      const notes = JSON.parse(localStorage.getItem('urbaneye_admin_notes') || '{}');
+      delete notes[String(reportId)];
+      localStorage.setItem('urbaneye_admin_notes', JSON.stringify(notes));
+    } catch (error) {
+      console.warn('Não foi possível remover as observações:', error);
+    }
+  }
+
+  function clearAllAdminReportMetadata() {
+    localStorage.removeItem('urbaneye_admin_assignments');
+    localStorage.removeItem('urbaneye_admin_notes');
+  }
+
+  async function clearAllAdminReports() {
+    if (!adminReports.length) {
+      toast('Não há relatos para limpar.');
+      return;
+    }
+    if (!confirm(`Tem certeza de que deseja apagar todos os ${adminReports.length} relatos? Esta ação não pode ser desfeita.`)) return;
+
+    let deletedCount = 0;
+    for (const report of [...adminReports]) {
+      try {
+        const deleted = await UrbanAPI.deleteProblemAsAdmin(report.id);
+        if (deleted) {
+          deletedCount += 1;
+          removeAdminReportMetadata(report.id);
+        }
+      } catch (error) {
+        console.error(`Erro ao apagar o relato ${report.id}:`, error);
+      }
+    }
+
+    const guestReports = JSON.parse(localStorage.getItem('urbaneye_guest_reports') || '[]');
+    if (Array.isArray(guestReports) && guestReports.length) {
+      deletedCount += guestReports.length;
+      localStorage.removeItem('urbaneye_guest_reports');
+      localStorage.removeItem('urbaneye_current_problem');
+    }
+    clearAllAdminReportMetadata();
+    await loadAdminReports();
+    renderAdminTeams();
+    toast(deletedCount ? `${deletedCount} relato(s) apagado(s).` : 'Nenhum relato pôde ser apagado.');
+  }
+
+  async function clearAdminReport(reportId) {
+    const report = adminReports.find((item) => String(item.id) === String(reportId));
+    if (!report) return;
+    if (!confirm(`Tem certeza de que deseja apagar o relato "${report.cat}"?`)) return;
+
+    try {
+      const deleted = await UrbanAPI.deleteProblemAsAdmin(reportId);
+      if (!deleted) {
+        toast('O relato não foi encontrado ou não pode ser apagado.');
+        return;
+      }
+      removeAdminReportMetadata(reportId);
+      await loadAdminReports();
+      renderAdminTeams();
+      toast('Relato apagado.');
+    } catch (error) {
+      console.error('Erro ao apagar relato administrativo:', error);
+      toast(error?.message || 'Não foi possível apagar o relato.');
     }
   }
 
@@ -131,6 +208,44 @@
         <button class="btn secondary" type="button" data-open-admin-report="${escapeHTML(report.id)}">Atender</button>
       </article>
     `).join('') || '<p class="admin-empty">Nenhum relato aguardando atendimento.</p>';
+    list.querySelectorAll('[data-open-admin-report]').forEach((button) => {
+      button.addEventListener('click', () => openAdminReportDialog(button.dataset.openAdminReport));
+    });
+  }
+
+  function renderAdminTeams() {
+    const list = document.getElementById('adminTeamList');
+    if (!list) return;
+    const teams = ['Equipe de manutenção', 'Equipe de iluminação', 'Equipe de limpeza', 'Defesa civil'];
+    list.innerHTML = teams.map((team, index) => {
+      const reports = adminReports.filter((report) => getAdminAssignee(report.id) === team);
+      return `
+        <section class="admin-team-card">
+          <button class="admin-team-summary" type="button" data-admin-team="${escapeHTML(team)}" aria-expanded="false">
+            <span class="admin-team-icon">${['🔧', '💡', '🧹', '🛡'][index]}</span>
+            <span class="admin-team-name"><b>${escapeHTML(team)}</b><small>${reports.length} relato(s) atribuído(s)</small></span>
+            <span class="admin-team-arrow">›</span>
+          </button>
+          <div class="admin-team-reports" data-admin-team-reports="${escapeHTML(team)}" hidden>
+            ${reports.length ? reports.map((report) => `
+              <button class="admin-team-report" type="button" data-open-admin-report="${escapeHTML(report.id)}">
+                <span><b>${escapeHTML(report.cat)}</b><small>${escapeHTML(getAdminReportLocation(report))}</small></span>
+                <span class="status ${report.status === 'Resolvido' ? 'resolved' : report.status === 'Em análise' ? 'progress' : 'open'}">${escapeHTML(report.status)}</span>
+              </button>
+            `).join('') : '<p class="admin-team-empty">Não existem relatos atribuídos.</p>'}
+          </div>
+        </section>
+      `;
+    }).join('');
+
+    list.querySelectorAll('[data-admin-team]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const expanded = button.getAttribute('aria-expanded') === 'true';
+        button.setAttribute('aria-expanded', String(!expanded));
+        button.closest('.admin-team-card').querySelector('[data-admin-team-reports]').hidden = expanded;
+        button.querySelector('.admin-team-arrow').classList.toggle('open', !expanded);
+      });
+    });
     list.querySelectorAll('[data-open-admin-report]').forEach((button) => {
       button.addEventListener('click', () => openAdminReportDialog(button.dataset.openAdminReport));
     });
@@ -366,6 +481,7 @@
     document.getElementById('adminResolutionRate').textContent = `${adminReports.length ? Math.round(resolvedCount / adminReports.length * 100) : 0}% concluído`;
     renderAdminOverview(openCount, analysisCount, resolvedCount);
     renderAdminPriority();
+    renderAdminTeams();
   
     if (!filtered.length) {
       list.innerHTML = '<p class="admin-empty">Nenhum relato encontrado para os filtros selecionados.</p>';
@@ -394,6 +510,7 @@
             <option value="Resolvido"${report.status === 'Resolvido' ? ' selected' : ''}>Resolvido</option>
           </select>
           <button class="btn secondary" type="button" data-save-admin-status="${escapeHTML(report.id)}">Salvar</button>
+          <button class="btn admin-delete-report" type="button" data-clear-admin-report="${escapeHTML(report.id)}" aria-label="Limpar relato ${escapeHTML(report.cat)}">Excluir</button>
         </div>
       </article>
     `).join('');
@@ -407,6 +524,9 @@
         if (assignee && !setAdminAssignee(button.dataset.saveAdminStatus, assignee.value)) return;
         saveAdminReportStatus(button.dataset.saveAdminStatus, button);
       });
+    });
+    list.querySelectorAll('[data-clear-admin-report]').forEach((button) => {
+      button.addEventListener('click', () => clearAdminReport(button.dataset.clearAdminReport));
     });
     list.querySelectorAll('[data-admin-status]').forEach((select) => {
       select.addEventListener('change', () => {
@@ -463,7 +583,15 @@
     }
   }
 
-  Object.assign(window, {showAdminView, scrollAdminNotifications, closeAdminReportDialog, exportAdminReports, loadAdminReports});
+  Object.assign(window, {
+    showAdminView,
+    scrollAdminNotifications,
+    closeAdminReportDialog,
+    exportAdminReports,
+    loadAdminReports,
+    clearAllAdminReports,
+    clearAdminReport
+  });
 
   onAppReady(initAdminDashboard);
 })();

@@ -98,6 +98,7 @@
             <option value="Todos">Todas as categorias</option>
           </select>
           <button class="btn secondary" type="button" onclick="exportAdminReports()">Exportar CSV</button>
+          <button class="btn admin-clear-all" type="button" onclick="clearAllAdminReports()">Limpar todos os relatos</button>
           <button class="admin-refresh" type="button" onclick="loadAdminReports()" aria-label="Atualizar relatos">↻</button>
         </div>
         <div id="adminReportsList" class="admin-reports"></div>
@@ -113,12 +114,14 @@
       </div>
 
       <div class="admin-content" data-admin-panel="team" hidden>
-        <section class="admin-panel admin-placeholder">
-          <span class="admin-placeholder-icon">♙</span>
-          <h2>Gestão da equipe</h2>
-          <p class="muted">Atribua os relatos às equipes disponíveis na lista de atendimento. As atribuições ficam salvas neste navegador.</p>
+        <div class="admin-team-heading">
+          <div>
+            <span class="admin-kicker">ATENDIMENTO</span>
+            <h2>Equipes e relatos atribuídos</h2>
+          </div>
           <button class="btn" type="button" onclick="showAdminView('reports')">Abrir fila de relatos</button>
-        </section>
+        </div>
+        <div id="adminTeamList" class="admin-team-list"></div>
       </div>
     </section>
   </main>
