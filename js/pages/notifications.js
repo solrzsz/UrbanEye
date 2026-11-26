@@ -67,6 +67,10 @@
     if (button) button.disabled = true;
     try {
       const count = await UrbanAPI.markNotificationsRead();
+      if (button) {
+        button.hidden = true;
+        button.disabled = false;
+      }
       await renderNotifications();
       toast(count ? 'Notificações marcadas como lidas.' : 'Não há notificações novas.');
     } catch (error) {

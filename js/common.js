@@ -175,7 +175,8 @@ function addInstitutionalAccessLinks() {
   }
 
   const top = document.querySelector('.top');
-  if (top && !document.querySelector('.top-institutional-link')) {
+  const isLoginPage = /(?:\/|^)auth\/login\.html(?:$|\?)/.test(window.location.pathname);
+  if (top && !isLoginPage && !document.querySelector('.top-institutional-link')) {
     const accessRow = document.createElement('div');
     accessRow.className = 'institutional-access-mobile';
     const link = document.createElement('a');
