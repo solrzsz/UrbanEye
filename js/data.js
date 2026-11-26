@@ -808,6 +808,16 @@ window.UrbanAPI = {
             throw new Error('Sua sessão expirou. Entre novamente para atualizar a situação.');
         }
 
+        const { data: profile, error: profileError } = await window.supabaseClient
+            .from('profiles')
+            .select('role, account_type, organization_role')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (profileError) throw profileError;
+        if (!window.isInstitutionalProfile || !window.isInstitutionalProfile(profile)) {
+            throw new Error('Apenas contas institucionais podem alterar a situação dos relatos.');
+        }
+
         const { data, error } = await window.supabaseClient
             .from('reports')
             .update({ status: normalizedStatus })

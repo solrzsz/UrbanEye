@@ -66,7 +66,21 @@
     const editor = document.getElementById('detailEditor');
     if (editor) editor.hidden = true;
     if (shouldOpenEditor && canEdit) openProblemEditor();
-    if (statusEditor) statusEditor.hidden = !isReportOwner;
+
+    let isInstitutional = false;
+    if (currentUser?.id && hasSupabaseAuth()) {
+      try {
+        const { data: profile, error } = await window.supabaseClient
+          .from('profiles')
+          .select('role, account_type, organization_role')
+          .eq('id', currentUser.id)
+          .maybeSingle();
+        isInstitutional = !error && isInstitutionalProfile(profile);
+      } catch (error) {
+        console.warn('Não foi possível validar o perfil institucional:', error);
+      }
+    }
+    if (statusEditor) statusEditor.hidden = !isInstitutional;
     const deleteCard = document.getElementById('detailDeleteCard');
     if (deleteCard) deleteCard.hidden = !(p.is_guest || isReportOwner);
     const statusSelect = document.getElementById('detailStatusSelect');
