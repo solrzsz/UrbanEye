@@ -80,8 +80,7 @@
         <div class="field"><label>Coordenadas</label><input id="reportLocation" value="-22.7858, -43.3116" readonly>
           <div id="reportLocationName" class="small muted" aria-live="polite">Identificando município...</div>
         </div>
-        <div class="field"><label>Descrição</label><textarea id="reportDescription"
-            maxlength="2000" required
+        <div class="field"><label>Descrição</label><textarea id="reportDescription" maxlength="2000" required
             placeholder="Descreva o problema e como ele afeta a região..."></textarea></div>
         <div class="field">
           <label>Foto do problema <span class="required-mark">*</span></label>
@@ -106,9 +105,9 @@
           <canvas id="photoCanvas" hidden></canvas>
           <p class="small muted">No celular, permita o acesso à câmera. Se não funcionar, use “Escolher arquivo”.</p>
         </div>
+        <p class="small muted">Se tirar a foto na horizontal, desbloqueie a orientação do dispositivo e gire-o.</p>
         <p class="small muted">A localização será usada para posicionar o problema no mapa. Evite informar dados
           pessoais na descrição.</p>
-        <p class="small muted">Se tirar a foto na horizontal, desbloquei a orientação do dispositivo e gire-o.</p>
         <button class="btn" onclick="sendReport()" id="btnSubmitReport">PUBLICAR RELATO</button>
       </div>
 
